@@ -6,7 +6,6 @@ import re
 import jieba
 from xml.dom.minidom import parseString
 import hashlib
-from pprint import pprint
 import json
 
 
@@ -33,11 +32,11 @@ class SharingInstance:
         return zhPattern.search(content)
 
     @staticmethod
-    def str2words(string, wordlist):
+    def str2words(string):
         string = re.sub('°', 'DegreeMark', string)
         if SharingInstance.chinese(string):
             print('Chinese Detected!')
-            string = re.sub(u'[^\u4e00-\u9fa5]', '', string)
+            # string = re.sub(u'[^\u4e00-\u9fa5]', '', string)
             words = jieba.cut(string, cut_all=False)
             # words = [w for w in words if not w in stopwords.words("chinese")]
         else:
@@ -47,23 +46,24 @@ class SharingInstance:
             # words = [w for w in words if not w in stopwords.words("english")]
             # print words
 
-        # print '/'.join(words) #  do not use print if you want to return
-        for word in words:
-            wordlist.append(word)
+        # print('/'.join(words)) #  do not use print if you want to return
         # return ' '.join(words)
         return words
 
     @staticmethod
     def description(html):
+        category = ''
+        appname = ''
         try:
             soup = bs(open(html, 'r', encoding="utf8"), "html.parser")
             appname_soup = bs(str(soup.select('.app-name')), "html.parser")
             appname = appname_soup.span.string
+            category_soup = bs(str(soup.select('.nav')), "html.parser")
+            category = category_soup.select('span')[2].a.string
             desc_soup = bs(str(soup.select('.brief-long')), "html.parser")
             desc = str(desc_soup.select('p')) # .split('data_url')[1]
-            word_list = []
             unseen = []
-            SharingInstance.str2words(desc, word_list)
+            word_list = SharingInstance.str2words(desc)
             topic_word_counter = {}
             for word in word_list:
                 if word in unseen:
@@ -81,11 +81,11 @@ class SharingInstance:
                                 topic_word_counter[topic] += 1
                             break
             if len(topic_word_counter) == 0:
-                return ['', appname]
+                return [category, appname]
             for topic in sorted(topic_word_counter, key=topic_word_counter.get, reverse=True):
                 return [topic, appname]
         except:
-            return ['', None]
+            return [category, appname]
 
     @staticmethod
     def find_xmls(data_dir):
@@ -113,7 +113,6 @@ class SharingInstance:
                         # print(node.toxml())
                         if node.getAttribute('package') in str(xml_path):
                             all_views.append(node)
-
                     print(doc)
                 except:
                     print(xml_path)
@@ -173,6 +172,7 @@ if __name__ == '__main__':
         data = json.load(outfile)
         print(data)
 
+
     root_dir = 'C:/Users/hao/Documents/Ground/0/'
     instances_dir_name = hashlib.md5(root_dir.encode('utf-8')).hexdigest()
     instances_dir_path = os.path.join('data', instances_dir_name)
@@ -192,6 +192,7 @@ if __name__ == '__main__':
                         print(instance)
                         instances.append(instance)
     print(len(instances))
+
 
 
 
