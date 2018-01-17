@@ -4,6 +4,7 @@ import os
 from bs4 import BeautifulSoup as bs
 import re
 import jieba
+from xml.dom.minidom import parseString
 
 
 class SharingInstance:
@@ -56,13 +57,13 @@ class SharingInstance:
             soup = bs(open(html, 'r', encoding="utf8"), "html.parser")
             appname_soup = bs(str(soup.select('.app-name')), "html.parser")
             appname = appname_soup.span.string
-            descsoup = bs(str(soup.select('.brief-long')), "html.parser")
-            desc = str(descsoup.select('p')) # .split('data_url')[1]
-            wordlist = []
+            desc_soup = bs(str(soup.select('.brief-long')), "html.parser")
+            desc = str(desc_soup.select('p')) # .split('data_url')[1]
+            word_list = []
             unseen = []
-            SharingInstance.str2words(desc, wordlist)
+            SharingInstance.str2words(desc, word_list)
             topic_word_counter = {}
-            for word in wordlist:
+            for word in word_list:
                 if word in unseen:
                     # print word
                     continue
@@ -85,13 +86,63 @@ class SharingInstance:
             print(e)
             return ['', None]
 
-    def __init__(self, dir):
-        self.dir = dir
-        self.html = SharingInstance.find_html(dir)
+    @staticmethod
+    def find_xmls(data_dir):
+        xmls = []
+        for root, dirs, files in os.walk(data_dir):
+            for filename in files:
+                if filename.endswith('.xml'):
+                    xmls.append(os.path.join(root, filename))
+        return xmls
+
+    @staticmethod
+    def hier_xml(xml_path):
+        all_views = []
+        doc = []
+        if os.path.exists(xml_path):
+            with open(xml_path, 'rb') as f:
+                try:
+                    data = f.read()
+                    dom = parseString(data)
+                    nodes = dom.getElementsByTagName('node')
+                    # Iterate over all the uses-permission nodes
+                    for node in nodes:
+                        if node.getAttribute('text') != '':
+                            doc.append(node.getAttribute('text'))
+                        # print(node.getAttribute('text'))
+                        # print(node.toxml())
+                        if node.getAttribute('package') in str(xml_path):
+                            all_views.append(node)
+
+                    print(doc)
+                except:
+                    print(xml_path)
+        else:
+            print('XML ' + xml_path + ' does not exist!')
+        return all_views, doc
+
+    def __init__(self, data_dir):
+        self.dir = data_dir
+        # Collect the topic and the app name from the html
+        self.html = SharingInstance.find_html(data_dir)
         if self.html:
             self.topic, self.appname = SharingInstance.description(self.html)
             print(self.topic, self.appname)
-        self.ui = ''
+        # Parse user interfaces
+        xmls = SharingInstance.find_xmls(data_dir)
+        length = 0
+        for xml in xmls:
+            views, doc = SharingInstance.hier_xml(xml)
+            if len(views) > length:
+                self.xml = xml
+                self.views = views
+                self.ui_doc = doc
+                length = len(views)
+        self.doc = []
+        self.doc.append(self.topic)
+        self.doc.append(self.appname)
+        self.doc.append(self.ui_doc)
+        print(self.doc)
 
 
 if __name__ == '__main__':
