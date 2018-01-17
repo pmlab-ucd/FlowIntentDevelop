@@ -5,6 +5,9 @@ from bs4 import BeautifulSoup as bs
 import re
 import jieba
 from xml.dom.minidom import parseString
+import hashlib
+from pprint import pprint
+import json
 
 
 class SharingInstance:
@@ -14,11 +17,10 @@ class SharingInstance:
                   'topic_map': [u'旅行', u'地图', u'地理', u'GPS', u'导航', u'旅游']}
 
     @staticmethod
-    def find_html(dir):
-        for root, dirs, files in os.walk(dir):
-            for filename in files:
-                if filename.endswith('.html'):
-                    return os.path.join(root, filename)
+    def find_html(data_dir):
+        for filename in os.listdir(data_dir):
+            if filename.endswith('.html'):
+                return os.path.join(data_dir, filename)
 
     @staticmethod
     def chinese(content):
@@ -31,17 +33,17 @@ class SharingInstance:
         return zhPattern.search(content)
 
     @staticmethod
-    def str2words(str, wordlist):
-        str = re.sub('°', 'DegreeMark', str)
-        if SharingInstance.chinese(str):
+    def str2words(string, wordlist):
+        string = re.sub('°', 'DegreeMark', string)
+        if SharingInstance.chinese(string):
             print('Chinese Detected!')
-            str = re.sub(u'[^\u4e00-\u9fa5]', '', str)
-            words = jieba.cut(str, cut_all=False)
+            string = re.sub(u'[^\u4e00-\u9fa5]', '', string)
+            words = jieba.cut(string, cut_all=False)
             # words = [w for w in words if not w in stopwords.words("chinese")]
         else:
             # print 'English Detected!'
-            str = re.sub('[^a-zA-Z]', ' ', str)  # if English only
-            words = str.lower().split()
+            string = re.sub('[^a-zA-Z]', ' ', string)  # if English only
+            words = string.lower().split()
             # words = [w for w in words if not w in stopwords.words("english")]
             # print words
 
@@ -82,17 +84,15 @@ class SharingInstance:
                 return ['', appname]
             for topic in sorted(topic_word_counter, key=topic_word_counter.get, reverse=True):
                 return [topic, appname]
-        except IOError as e:
-            print(e)
+        except:
             return ['', None]
 
     @staticmethod
     def find_xmls(data_dir):
         xmls = []
-        for root, dirs, files in os.walk(data_dir):
-            for filename in files:
-                if filename.endswith('.xml'):
-                    xmls.append(os.path.join(root, filename))
+        for file_name in os.listdir(data_dir):
+            if file_name.endswith('.xml'):
+                xmls.append(os.path.join(data_dir, file_name))
         return xmls
 
     @staticmethod
@@ -121,30 +121,78 @@ class SharingInstance:
             print('XML ' + xml_path + ' does not exist!')
         return all_views, doc
 
+    @staticmethod
+    def instances(root_dir):
+        instances = []
+        for root, dirs, files in os.walk(root_dir):
+            for dir in dirs:
+                if len(SharingInstance.find_xmls(os.path.join(root, dir))) > 0:
+                    instances.append(SharingInstance(os.path.join(root, dir)))
+        return instances
+
     def __init__(self, data_dir):
         self.dir = data_dir
+        self.id = os.path.basename(data_dir)
+        self.doc = []
         # Collect the topic and the app name from the html
         self.html = SharingInstance.find_html(data_dir)
+        self.topic = ''
+        self.appname = ''
+        #self.views = []
+        self.ui_doc = ''
+        self.xml = ''
         if self.html:
             self.topic, self.appname = SharingInstance.description(self.html)
+            self.doc.append(self.topic)
+            self.doc.append(self.appname)
             print(self.topic, self.appname)
         # Parse user interfaces
         xmls = SharingInstance.find_xmls(data_dir)
         length = 0
         for xml in xmls:
             views, doc = SharingInstance.hier_xml(xml)
-            if len(views) > length:
+            if len(views) >= length:
                 self.xml = xml
-                self.views = views
+                #self.views = views
                 self.ui_doc = doc
                 length = len(views)
-        self.doc = []
-        self.doc.append(self.topic)
-        self.doc.append(self.appname)
         self.doc.append(self.ui_doc)
         print(self.doc)
+
+    def json(self):
+        return json.dumps(self, default=lambda o: o.__dict__,
+                          sort_keys=True, indent=4, ensure_ascii=False)
 
 
 if __name__ == '__main__':
     instance = SharingInstance('C:/Users/hao/Documents/Ground/0/5/cn.apps123.shell.jiancaichuangxin')
+    print(json.loads(instance.json()))
+    with open('test.json', 'w', encoding="utf8") as outfile:
+        outfile.write(instance.json())
+    with open('test.json', 'r', encoding="utf8") as outfile:
+        data = json.load(outfile)
+        print(data)
+
+    root_dir = 'C:/Users/hao/Documents/Ground/0/'
+    instances_dir_name = hashlib.md5(root_dir.encode('utf-8')).hexdigest()
+    instances_dir_path = os.path.join('data', instances_dir_name)
+    if not os.path.exists(instances_dir_path):
+        os.makedirs(instances_dir_path)
+        instances = SharingInstance.instances(root_dir)
+        for instance in instances:
+            with open(os.path.join(instances_dir_path, instance.id + '.json'), 'w', encoding="utf8") as outfile:
+                outfile.write(instance.json())
+    else:
+        instances = []
+        for root, dirs, files in os.walk(instances_dir_path):
+            for file_name in files:
+                if file_name.endswith('.json'):
+                    with open(os.path.join(root, file_name), 'r', encoding="utf8") as myfile:
+                        instance = json.load(myfile)
+                        print(instance)
+                        instances.append(instance)
+    print(len(instances))
+
+
+
 
