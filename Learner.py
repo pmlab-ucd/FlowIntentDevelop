@@ -247,26 +247,37 @@ class Learner:
         return measures
 
     @staticmethod
-    def cross_validation(clf, data, labels, scoring='f1', n_fold=5):
+    def n_folds(data, labels, shuffle=True, fold=5):
         X = data
         y = labels
         ''' Run x-validation and return scores, averaged confusion matrix, and df with false positives and negatives '''
+        # cv = KFold(n_splits=5, shuffle=True)
+        # I generate a KFold in order to make cross validation
+        kf = StratifiedKFold(n_splits=fold, shuffle=shuffle, random_state=42)
+        folds = []
+        for fold_index, (train_index, test_index) in enumerate(kf.split(X, y)):
+            fold = dict()
+            fold['train_index'] = train_index
+            fold['test_index'] = test_index
+            fold['X_train'], fold['X_test'] = X[train_index], X[test_index]
+            fold['y_train'], fold['y_test'] = y[train_index], y[test_index]
+
+            folds.append(fold)
+        return folds
+
+    @staticmethod
+    def cross_validation(clf, folds, shuffle=True, scoring='f1', n=5):
         t0 = time()
         results = dict()
-        # cv = KFold(n_splits=5, shuffle=True)
-
-        # I generate a KFold in order to make cross validation
-        shuffle = True
-        kf = StratifiedKFold(n_splits=n_fold, shuffle=shuffle, random_state=42)
         scores = []
         conf_mat = np.zeros((2, 2))  # Binary classification
 
         # I start the cross validation
-        for fold, (train_index, test_index) in enumerate(kf.split(X, y)):
+        for fold in folds:
             result = dict()
-            X_train, X_test = X[train_index], X[test_index]
-            y_train, y_test = y[train_index], y[test_index]
-
+            test_index = fold['test_index']
+            X_train, X_test = fold['X_train'], fold['X_test']
+            y_train, y_test = fold['y_train'], fold['y_test']
             # I train the classifier
             clf.fit(X_train, y_train)
 
@@ -274,7 +285,7 @@ class Learner:
             predicted = clf.predict(X_test)
             y_plabs = np.squeeze(predicted)
             if hasattr(clf, 'predict_proba'):
-                y_pprobs = clf.predict_proba(X_test)  # Predicted probabilitie
+                y_pprobs = clf.predict_proba(X_test)  # Predicted probability
                 result['roc'] = metrics.roc_auc_score(y_test, y_pprobs[:, 1])
             else:  # for SVM
                 y_decision = clf.decision_function(X_test)
@@ -314,12 +325,15 @@ class Learner:
         # print "\nMean score: %0.2f (+/- %0.2f)" % (np.mean(scores), np.std(scores) * 2)
         results['mean_scores'] = np.mean(scores)
         results['std_scores'] = np.std(scores)
-        conf_mat /= n_fold
+        conf_mat /= n
         # print "Mean CM: \n", conf_mat
 
         # print "\nMean classification measures: \n"
         results['mean_conf_mat'] = Learner.class_report(conf_mat)
         # return scores, conf_mat, {'fp': sorted(false_pos), 'fn': sorted(false_neg)}
+        Learner.logger.info(str(clf) + ': ' + str(results['duration']))
+        Learner.logger.info('mean scores:' + str(results['mean_scores']))
+        Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
         return results
 
     @staticmethod
@@ -327,7 +341,7 @@ class Learner:
         clf = svm.SVC(class_weight='balanced', probability=True)
         results = None
         if n_fold != 0:
-            results = Learner.cross_validation(clf, train_data, labels, n_fold=n_fold)
+            results = Learner.cross_validation(clf, train_data, labels, fold=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             Learner.logger.info('SVM: ' + str(results['duration']))
@@ -347,7 +361,7 @@ class Learner:
         clf = LogisticRegression(class_weight='balanced')
         results = None
         if n_fold != 0:
-            results = Learner.cross_validation(clf, train_data, labels, n_fold=n_fold)
+            results = Learner.cross_validation(clf, train_data, labels, fold=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             Learner.logger.info('Logistic: ' + str(results['duration']))

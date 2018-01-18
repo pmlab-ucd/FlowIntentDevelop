@@ -4,6 +4,9 @@ import json
 import os
 from Learner import Learner
 import numpy as np
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.ensemble import RandomForestClassifier
 
 
 class InstanceHandler:
@@ -53,8 +56,14 @@ class InstanceHandler:
                             instances.append(instance)
         docs, y = InstanceHandler.docs(instances)
         train_data, voc, vec = Learner.gen_X_matrix(docs)
-        Learner.train_logistic(train_data, y, n_fold=10)
-        Learner.train_tree(train_data, y, n_fold=10)
+        folds = Learner.n_folds(train_data, y)
+        clf = DecisionTreeClassifier(class_weight='balanced')
+        Learner.cross_validation(clf, folds)
+        clf = BernoulliNB()
+        Learner.cross_validation(clf, folds)
+        clf = RandomForestClassifier(class_weight='balanced')
+        Learner.cross_validation(clf, folds)
+
 
 
 if __name__ == '__main__':
