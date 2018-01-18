@@ -147,6 +147,8 @@ class Learner:
         for doc in docs:
             instances.append(doc.doc)
             labels.append(doc.label)
+            print(doc.doc)
+            print(doc.label)
 
         return instances, np.array(labels)
 
@@ -217,11 +219,11 @@ class Learner:
         return clf, results
 
     @staticmethod
-    def train_bayes(train_data, labels, cross_vali=True):
+    def train_bayes(train_data, labels, n_fold=0):
         clf = BernoulliNB()
         results = None
-        if cross_vali:
-            results = Learner.cross_validation(clf, train_data, labels)
+        if n_fold != 0:
+            results = Learner.cross_validation(clf, train_data, labels, n_fold=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             Learner.logger.info('Bayes: ' + str(results['duration']))
@@ -247,7 +249,7 @@ class Learner:
     @staticmethod
     def cross_validation(clf, data, labels, scoring='f1', n_fold=5):
         X = data
-        y = np.array(labels)
+        y = labels
         ''' Run x-validation and return scores, averaged confusion matrix, and df with false positives and negatives '''
         t0 = time()
         results = dict()
@@ -321,11 +323,11 @@ class Learner:
         return results
 
     @staticmethod
-    def train_SVM(train_data, labels, cross_vali=True):
+    def train_SVM(train_data, labels, n_fold=5):
         clf = svm.SVC(class_weight='balanced', probability=True)
         results = None
-        if cross_vali == True:
-            results = Learner.cross_validation(clf, train_data, labels)
+        if n_fold != 0:
+            results = Learner.cross_validation(clf, train_data, labels, n_fold=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             Learner.logger.info('SVM: ' + str(results['duration']))
@@ -341,11 +343,11 @@ class Learner:
         return clf, results
 
     @staticmethod
-    def train_logistic(train_data, labels, cross_vali=True):
+    def train_logistic(train_data, labels, n_fold=5):
         clf = LogisticRegression(class_weight='balanced')
         results = None
-        if cross_vali == True:
-            results = Learner.cross_validation(clf, train_data, labels)
+        if n_fold != 0:
+            results = Learner.cross_validation(clf, train_data, labels, n_fold=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             Learner.logger.info('Logistic: ' + str(results['duration']))
@@ -361,11 +363,11 @@ class Learner:
         return clf, results
 
     @staticmethod
-    def train_tree(train_data, labels, cross_vali=True, res=None, output_dir=os.curdir, tree_name='tree'):
+    def train_tree(train_data, labels, n_fold=5, res=None, output_dir=os.curdir, tree_name='tree'):
         clf = DecisionTreeClassifier(class_weight='balanced')
         results = None
-        if cross_vali == True:
-            results = Learner.cross_validation(clf, train_data, labels)
+        if n_fold != 0:
+            results = Learner.cross_validation(clf, train_data, labels, n_fold=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             Learner.logger.info('Tree: ' + str(results['duration']))
@@ -506,6 +508,7 @@ class Learner:
 
     @staticmethod
     def str2words(string):
+        jieba.load_userdict('user.dict')
         string = re.sub('°', 'DegreeMark', string)
         if Learner.chinese(string):
             # print('Chinese Detected!')
