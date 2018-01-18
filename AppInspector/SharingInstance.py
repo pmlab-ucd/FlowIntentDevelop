@@ -3,10 +3,10 @@
 import os
 from bs4 import BeautifulSoup as bs
 import re
-import jieba
 from xml.dom.minidom import parseString
 import hashlib
 import json
+from Learner import Learner
 
 
 class SharingInstance:
@@ -22,35 +22,6 @@ class SharingInstance:
                 return os.path.join(data_dir, filename)
 
     @staticmethod
-    def chinese(content):
-        """
-        判断是否是中文需要满足u'[\u4e00-\u9fa5]+'，
-        需要注意如果正则表达式的模式中使用unicode，那么
-        要匹配的字符串也必须转换为unicode，否则肯定会不匹配。
-        """
-        zhPattern = re.compile(u'[\u4e00-\u9fa5]+')
-        return zhPattern.search(content)
-
-    @staticmethod
-    def str2words(string):
-        string = re.sub('°', 'DegreeMark', string)
-        if SharingInstance.chinese(string):
-            print('Chinese Detected!')
-            # string = re.sub(u'[^\u4e00-\u9fa5]', '', string)
-            words = jieba.cut(string, cut_all=False)
-            # words = [w for w in words if not w in stopwords.words("chinese")]
-        else:
-            # print 'English Detected!'
-            string = re.sub('[^a-zA-Z]', ' ', string)  # if English only
-            words = string.lower().split()
-            # words = [w for w in words if not w in stopwords.words("english")]
-            # print words
-
-        # print('/'.join(words)) #  do not use print if you want to return
-        # return ' '.join(words)
-        return words
-
-    @staticmethod
     def description(html):
         category = ''
         appname = ''
@@ -63,7 +34,7 @@ class SharingInstance:
             desc_soup = bs(str(soup.select('.brief-long')), "html.parser")
             desc = str(desc_soup.select('p')) # .split('data_url')[1]
             unseen = []
-            word_list = SharingInstance.str2words(desc)
+            word_list = Learner.str2words(desc)
             topic_word_counter = {}
             for word in word_list:
                 if word in unseen:
@@ -122,17 +93,18 @@ class SharingInstance:
 
     @staticmethod
     def instances(root_dir):
+        label = os.path.basename(root_dir)
         instances = []
         for root, dirs, files in os.walk(root_dir):
             for dir in dirs:
                 if len(SharingInstance.find_xmls(os.path.join(root, dir))) > 0:
-                    instances.append(SharingInstance(os.path.join(root, dir)))
+                    instances.append(SharingInstance(os.path.join(root, dir), label))
         return instances
 
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, label):
         self.dir = data_dir
         self.id = os.path.basename(data_dir)
-        self.doc = []
+        self.label = label
         # Collect the topic and the app name from the html
         self.html = SharingInstance.find_html(data_dir)
         self.topic = ''
@@ -142,8 +114,6 @@ class SharingInstance:
         self.xml = ''
         if self.html:
             self.topic, self.appname = SharingInstance.description(self.html)
-            self.doc.append(self.topic)
-            self.doc.append(self.appname)
             print(self.topic, self.appname)
         # Parse user interfaces
         xmls = SharingInstance.find_xmls(data_dir)
@@ -155,12 +125,19 @@ class SharingInstance:
                 #self.views = views
                 self.ui_doc = doc
                 length = len(views)
-        self.doc.append(self.ui_doc)
-        print(self.doc)
 
     def json(self):
         return json.dumps(self, default=lambda o: o.__dict__,
                           sort_keys=True, indent=4, ensure_ascii=False)
+
+
+class obj(object):
+    def __init__(self, d):
+        for a, b in d.items():
+            if isinstance(b, (list, tuple)):
+                setattr(self, a, [obj(x) if isinstance(x, dict) else x for x in b])
+            else:
+                setattr(self, a, obj(b) if isinstance(b, dict) else b)
 
 
 if __name__ == '__main__':
@@ -171,7 +148,6 @@ if __name__ == '__main__':
     with open('test.json', 'r', encoding="utf8") as outfile:
         data = json.load(outfile)
         print(data)
-
 
     root_dir = 'C:/Users/hao/Documents/Ground/0/'
     instances_dir_name = hashlib.md5(root_dir.encode('utf-8')).hexdigest()
@@ -188,8 +164,8 @@ if __name__ == '__main__':
             for file_name in files:
                 if file_name.endswith('.json'):
                     with open(os.path.join(root, file_name), 'r', encoding="utf8") as myfile:
-                        instance = json.load(myfile)
-                        print(instance)
+                        instance = obj(json.load(myfile))
+                        print(instance.id)
                         instances.append(instance)
     print(len(instances))
 
