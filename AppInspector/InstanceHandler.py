@@ -65,7 +65,6 @@ class InstanceHandler:
         Learner.cross_validation(clf, folds)
 
 
-
 if __name__ == '__main__':
-    root_dir = 'H:/FlowIntent/Location'
+    root_dir = 'H:/FlowIntent/test'#'H:/FlowIntent/Location'
     InstanceHandler.handle(root_dir)

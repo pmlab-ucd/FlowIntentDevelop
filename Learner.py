@@ -261,6 +261,7 @@ class Learner:
             fold['test_index'] = test_index
             fold['X_train'], fold['X_test'] = X[train_index], X[test_index]
             fold['y_train'], fold['y_test'] = y[train_index], y[test_index]
+            fold['index'] = fold_index
 
             folds.append(fold)
         return folds
@@ -283,15 +284,17 @@ class Learner:
 
             # I make the predictions
             predicted = clf.predict(X_test)
+            print(fold)
+            print(predicted)
             y_plabs = np.squeeze(predicted)
             if hasattr(clf, 'predict_proba'):
                 y_pprobs = clf.predict_proba(X_test)  # Predicted probability
                 result['roc'] = metrics.roc_auc_score(y_test, y_pprobs[:, 1])
             else:  # for SVM
                 y_decision = clf.decision_function(X_test)
-                try:
+                if not isinstance(clf, svm.OneClassSVM):
                     result['roc'] = metrics.roc_auc_score(y_test, y_decision[:, 1])
-                except:  # OCSVM
+                else:  # OCSVM
                     result['roc'] = metrics.roc_auc_score(y_test, y_decision)
             # metrics.roc_curve(y_test, y_pprobs[:, 1])
             scores.append(result['roc'])
@@ -307,12 +310,14 @@ class Learner:
             result['conf_mat'] = confusion.tolist()
 
             # Collect indices of false positive and negatives, effective only shuffle=False, or backup the original data
-            if not shuffle:
-                fp_i = np.where((y_plabs == 1) & (y_test == -1))[0]
-                fn_i = np.where((y_plabs == -1) & (y_test == 1))[0]
+            if not isinstance(clf, svm.OneClassSVM):
+                fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
+                fn_i = np.where((y_plabs == 0) & (y_test == 1))[0]
                 result['fp_item'] = test_index[fp_i]
                 result['fn_item'] = test_index[fn_i]
-            results['fold_' + str(fold)] = result
+                print(result['fp_item'])
+                print(result['fn_item'])
+            results[str(fold['index'])] = result
 
         # cv_res = cross_val_score(clf, data, labels, cv=cv, scoring='f1').tolist()
         # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
