@@ -5,11 +5,16 @@ import os
 from Learner import Learner
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.ensemble import RandomForestClassifier
+from utils import Utilities
+from sklearn import svm
+from sklearn.linear_model import LogisticRegression
 
 
 class InstanceHandler:
+    logger = Utilities.set_logger('InstanceHandler')
+
     @staticmethod
     def docs(instances):
         docs = []
@@ -20,8 +25,6 @@ class InstanceHandler:
                 doc.append(' '.join(Learner.str2words(str(string))))
             docs.append(' '.join(doc))
             labels.append(int(instance.label))
-            print(doc)
-            print(instance.label)
         return docs, np.array(labels)
 
     @staticmethod
@@ -44,7 +47,7 @@ class InstanceHandler:
             for instance in neg_instances:
                 with open(os.path.join(neg_out_dir, instance.id + '.json'), 'w', encoding="utf8") as outfile:
                     outfile.write(instance.json())
-            instances.append(neg_instances)
+            instances += neg_instances
         else:
             instances = []
             for root, dirs, files in os.walk(instances_dir_path):
@@ -56,15 +59,28 @@ class InstanceHandler:
                             instances.append(instance)
         docs, y = InstanceHandler.docs(instances)
         train_data, voc, vec = Learner.gen_X_matrix(docs)
-        folds = Learner.n_folds(train_data, y)
+        folds = Learner.n_folds(train_data, y, fold=10)
         clf = DecisionTreeClassifier(class_weight='balanced')
-        Learner.cross_validation(clf, folds)
-        clf = BernoulliNB()
+        res = Learner.cross_validation(clf, folds)
+        for fold in res['fold']:
+            for item in fold['fp_item']:
+                instance = instances[item]
+                InstanceHandler.logger.info("FP:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
+            for item in fold['fn_item']:
+                instance = instances[item]
+                InstanceHandler.logger.info("FN:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
+
+        clf = MultinomialNB()
         Learner.cross_validation(clf, folds)
         clf = RandomForestClassifier(class_weight='balanced')
         Learner.cross_validation(clf, folds)
+        clf = svm.SVC(kernel='linear', class_weight='balanced', probability=True)
+        Learner.cross_validation(clf, folds)
+        clf = LogisticRegression(class_weight='balanced')
+        Learner.cross_validation(clf, folds)
+
 
 
 if __name__ == '__main__':
-    root_dir = 'H:/FlowIntent/test'#'H:/FlowIntent/Location'
+    root_dir = 'H:/FlowIntent/Location'
     InstanceHandler.handle(root_dir)

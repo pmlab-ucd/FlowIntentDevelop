@@ -274,6 +274,7 @@ class Learner:
         conf_mat = np.zeros((2, 2))  # Binary classification
 
         # I start the cross validation
+        results['fold'] = []
         for fold in folds:
             result = dict()
             test_index = fold['test_index']
@@ -284,8 +285,8 @@ class Learner:
 
             # I make the predictions
             predicted = clf.predict(X_test)
-            print(fold)
-            print(predicted)
+            # print(fold)
+            # print(predicted)
             y_plabs = np.squeeze(predicted)
             if hasattr(clf, 'predict_proba'):
                 y_pprobs = clf.predict_proba(X_test)  # Predicted probability
@@ -311,13 +312,13 @@ class Learner:
 
             # Collect indices of false positive and negatives, effective only shuffle=False, or backup the original data
             if not isinstance(clf, svm.OneClassSVM):
-                fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
-                fn_i = np.where((y_plabs == 0) & (y_test == 1))[0]
+                fp_i = np.where((y_plabs == 0) & (y_test == 1))[0]
+                fn_i = np.where((y_plabs == 1) & (y_test == 0))[0]
                 result['fp_item'] = test_index[fp_i]
                 result['fn_item'] = test_index[fn_i]
-                print(result['fp_item'])
-                print(result['fn_item'])
-            results[str(fold['index'])] = result
+                # print(result['fp_item'])
+                # print(result['fn_item'])
+            results['fold'].append(result)
 
         # cv_res = cross_val_score(clf, data, labels, cv=cv, scoring='f1').tolist()
         # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
