@@ -247,6 +247,8 @@ class Learner:
         # measures['tn_rate'] = tn / (tn + fp)  # (true negative rate)
         return measures
 
+
+
     @staticmethod
     def n_folds(data, labels, shuffle=True, fold=5):
         X = data
@@ -262,10 +264,12 @@ class Learner:
             fold['test_index'] = test_index
             fold['X_train'], fold['X_test'] = X[train_index], X[test_index]
             fold['y_train'], fold['y_test'] = y[train_index], y[test_index]
-            fold['index'] = fold_index
+            fold['i'] = fold_index
 
             folds.append(fold)
         return folds
+
+
 
     @staticmethod
     def cross_validation(clf, folds, shuffle=True, scoring='f1', n=5):
@@ -630,7 +634,6 @@ class Learner:
             Learner.logger.info('mean scores:' + str(results['mean_scores']))
             Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
 
-        overlap_predicted_neg = []
         for i in range(0, len(folds)):
             overlap_predicted_neg_i = set()
             for j in range(0, len(clfs)):
@@ -650,10 +653,8 @@ class Learner:
                             another_tmp.add(item)
                     overlap_predicted_neg_i = another_tmp
             Learner.logger.debug(len(overlap_predicted_neg_i))
-            overlap_predicted_neg.append(list(overlap_predicted_neg_i))
-        Learner.logger.debug(overlap_predicted_neg)
-
-        return results, overlap_predicted_neg
+            folds[i]['vot_pred_neg'] = list(overlap_predicted_neg_i)
+        return results
 
 
 if __name__ == '__main__':

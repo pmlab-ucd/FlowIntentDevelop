@@ -139,6 +139,10 @@ class obj(object):
             else:
                 setattr(self, a, obj(b) if isinstance(b, dict) else b)
 
+    def json(self):
+        return json.dumps(self, default=lambda o: o.__dict__,
+                          sort_keys=True, indent=4, ensure_ascii=False)
+
 
 if __name__ == '__main__':
     instance = SharingInstance('C:/Users/hao/Documents/Ground/0/5/cn.apps123.shell.jiancaichuangxin')

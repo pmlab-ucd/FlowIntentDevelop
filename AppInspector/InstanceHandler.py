@@ -10,6 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from utils import Utilities
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression
+import pandas as pd
 
 
 class InstanceHandler:
@@ -52,17 +53,18 @@ class InstanceHandler:
             instances += neg_instances
         else:
             instances = []
-            for root, dirs, files in os.walk(instances_dir_path):
-                for file_name in files:
-                    if file_name.endswith('.json'):
-                        with open(os.path.join(root, file_name), 'r', encoding="utf8") as my_file:
-                            instance = obj(json.load(my_file))
-                            # print(instance.id)
-                            instances.append(instance)
+            for dir_path in [pos_out_dir, neg_out_dir]:
+                for root, dirs, files in os.walk(dir_path):
+                    for file_name in files:
+                        if file_name.endswith('.json'):
+                            with open(os.path.join(root, file_name), 'r', encoding="utf8") as my_file:
+                                instance = obj(json.load(my_file))
+                                # print(instance.id)
+                                instances.append(instance)
         docs, y = InstanceHandler.docs(instances)
         train_data, voc, vec = Learner.gen_X_matrix(docs)
         InstanceHandler.logger.info('neg: ' + str(len(np.where(y == 0)[0])))
-        folds = Learner.n_folds(train_data, y, fold=10)
+        folds = Learner.n_folds(train_data, y, fold=10) #[Fold(f) for f in Learner.n_folds(train_data, y, fold=10)]
         """
         clf = DecisionTreeClassifier(class_weight='balanced')
         res = Learner.cross_validation(clf, folds)
@@ -86,7 +88,19 @@ class InstanceHandler:
         clfs = [svm.SVC(kernel='linear', class_weight='balanced', probability=True),
                 RandomForestClassifier(class_weight='balanced'),
                 LogisticRegression(class_weight='balanced')]
-        Learner.voting(clfs, folds)
+        res, predicted_neg = Learner.voting(clfs, folds)
+        predicted_neg_instances = []
+        for negs in predicted_neg:
+            predicted_neg_instances.append([instances[i] for i in negs])
+        with open(os.path.join(instances_dir_path, 'folds.json'), 'w') as json_file:
+            pd.Series(folds).to_json(json_file, orient='split')
+        """
+        with open(os.path.join(instances_dir_path, 'voting_res.json'), 'w') as json_file:
+            pd.Series(res).to_json(json_file, orient='split')
+            # json.dump(res, json_file)
+        with open(os.path.join(instances_dir_path, 'voting_predicted_neg.json'), 'w') as json_file:
+            json.dump(predicted_neg_instances, json_file)
+        """
 
 
 if __name__ == '__main__':
