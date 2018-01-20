@@ -46,6 +46,7 @@ class StemmedTfidfVectorizer(TfidfVectorizer):
 
 class Learner:
     logger = Utilities.set_logger('Learner')
+    logger.setLevel(level=20)
 
     class LabelledDocs:
         def stem_tokens(tokens, stemmer):
@@ -561,7 +562,7 @@ class Learner:
             clf_name = type(clf).__name__
             results[clf_name] = dict()
             results[clf_name]['fold'] = []
-            Learner.logger.info(clf_name + ': ')
+            Learner.logger.debug(clf_name + ': ')
             for fold in folds:
                 result = dict()
                 test_index = fold['test_index']
@@ -574,7 +575,6 @@ class Learner:
                 predicted = clf.predict(X_test)
                 y_plabs = np.squeeze(predicted)
                 result['predicted_0'] = test_index[np.where(y_plabs == 0)[0]]
-                print(result['predicted_0'])
                 if hasattr(clf, 'predict_proba'):
                     y_pprobs = clf.predict_proba(X_test)  # Predicted probability
                     result['roc'] = metrics.roc_auc_score(y_test, y_pprobs[:, 1])
@@ -606,9 +606,9 @@ class Learner:
                     # print(result['fp_item'])
                     # print(result['fn_item'])
                 results[clf_name]['fold'].append(result)
-                Learner.logger.info('fold: ')
-                Learner.logger.info("FP:" + str(result['fp_item']))
-                Learner.logger.info("FN:" + str(result['fn_item']))
+                Learner.logger.debug('fold: ')
+                Learner.logger.debug("FP:" + str(result['fp_item']))
+                Learner.logger.debug("FN:" + str(result['fn_item']))
             # cv_res = cross_val_score(clf, data, labels, cv=cv, scoring='f1').tolist()
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
@@ -636,7 +636,7 @@ class Learner:
             for j in range(0, len(clfs)):
                 clf_name = type(clfs[j]).__name__
                 items = results[clf_name]['fold'][i]['predicted_0']
-                Learner.logger.info("num:" + str(len(items)))
+                # Learner.logger.info("num:" + str(len(items)))
                 if j == 0:
                     for item in items:
                         overlap_predicted_neg_i.add(int(item))
@@ -649,9 +649,10 @@ class Learner:
                         if item in tmp:
                             another_tmp.add(item)
                     overlap_predicted_neg_i = another_tmp
-            Learner.logger.info(len(overlap_predicted_neg_i))
+            Learner.logger.debug(len(overlap_predicted_neg_i))
             overlap_predicted_neg.append(list(overlap_predicted_neg_i))
-        Learner.logger.info(overlap_predicted_neg)
+        Learner.logger.debug(overlap_predicted_neg)
+
         return results, overlap_predicted_neg
 
 

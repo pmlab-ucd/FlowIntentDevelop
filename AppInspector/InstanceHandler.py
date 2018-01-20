@@ -14,6 +14,7 @@ from sklearn.linear_model import LogisticRegression
 
 class InstanceHandler:
     logger = Utilities.set_logger('InstanceHandler')
+    logger.setLevel(level=20)
 
     @staticmethod
     def docs(instances):
@@ -44,6 +45,7 @@ class InstanceHandler:
 
             os.makedirs(neg_out_dir)
             neg_instances = SharingInstance.instances(neg_dir)
+            InstanceHandler.logger.info('neg: ' + str(len(neg_instances)))
             for instance in neg_instances:
                 with open(os.path.join(neg_out_dir, instance.id + '.json'), 'w', encoding="utf8") as outfile:
                     outfile.write(instance.json())
@@ -59,6 +61,7 @@ class InstanceHandler:
                             instances.append(instance)
         docs, y = InstanceHandler.docs(instances)
         train_data, voc, vec = Learner.gen_X_matrix(docs)
+        InstanceHandler.logger.info('neg: ' + str(len(np.where(y == 0)[0])))
         folds = Learner.n_folds(train_data, y, fold=10)
         """
         clf = DecisionTreeClassifier(class_weight='balanced')
@@ -80,7 +83,6 @@ class InstanceHandler:
         clf = LogisticRegression(class_weight='balanced')
         Learner.cross_validation(clf, folds)
         """
-
         clfs = [svm.SVC(kernel='linear', class_weight='balanced', probability=True),
                 RandomForestClassifier(class_weight='balanced'),
                 LogisticRegression(class_weight='balanced')]

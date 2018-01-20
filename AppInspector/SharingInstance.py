@@ -165,9 +165,7 @@ if __name__ == '__main__':
                 if file_name.endswith('.json'):
                     with open(os.path.join(root, file_name), 'r', encoding="utf8") as myfile:
                         instance = obj(json.load(myfile))
-                        print(instance.id)
                         instances.append(instance)
-    print(len(instances))
 
 
 
