@@ -549,6 +549,111 @@ class Learner:
         # return ' '.join(words)
         return word_list
 
+    @staticmethod
+    def voting(clfs, folds):
+        t0 = time()
+        results = dict()
+        scores = []
+        conf_mat = np.zeros((2, 2))  # Binary classification
+
+        # I start the cross validation
+        for clf in clfs:
+            clf_name = type(clf).__name__
+            results[clf_name] = dict()
+            results[clf_name]['fold'] = []
+            Learner.logger.info(clf_name + ': ')
+            for fold in folds:
+                result = dict()
+                test_index = fold['test_index']
+                X_train, X_test = fold['X_train'], fold['X_test']
+                y_train, y_test = fold['y_train'], fold['y_test']
+                # I train the classifier
+                clf.fit(X_train, y_train)
+
+                # I make the predictions
+                predicted = clf.predict(X_test)
+                y_plabs = np.squeeze(predicted)
+                result['predicted_0'] = test_index[np.where(y_plabs == 0)[0]]
+                print(result['predicted_0'])
+                if hasattr(clf, 'predict_proba'):
+                    y_pprobs = clf.predict_proba(X_test)  # Predicted probability
+                    result['roc'] = metrics.roc_auc_score(y_test, y_pprobs[:, 1])
+                else:  # for SVM
+                    y_decision = clf.decision_function(X_test)
+                    if not isinstance(clf, svm.OneClassSVM):
+                        result['roc'] = metrics.roc_auc_score(y_test, y_decision[:, 1])
+                    else:  # OCSVM
+                        result['roc'] = metrics.roc_auc_score(y_test, y_decision)
+                # metrics.roc_curve(y_test, y_pprobs[:, 1])
+                scores.append(result['roc'])
+
+                # Learner.perf_measure(predicted, y_test)
+
+                # I obtain the accuracy of this fold
+                # ac = accuracy_score(predicted, y_test)
+
+                # I obtain the confusion matrix
+                confusion = metrics.confusion_matrix(y_test, predicted)
+                conf_mat += confusion
+                result['conf_mat'] = confusion.tolist()
+
+                # Collect indices of false positive and negatives, effective only shuffle=False, or backup the original data
+                if not isinstance(clf, svm.OneClassSVM):
+                    fp_i = np.where((y_plabs == 0) & (y_test == 1))[0]
+                    fn_i = np.where((y_plabs == 1) & (y_test == 0))[0]
+                    result['fp_item'] = test_index[fp_i]
+                    result['fn_item'] = test_index[fn_i]
+                    # print(result['fp_item'])
+                    # print(result['fn_item'])
+                results[clf_name]['fold'].append(result)
+                Learner.logger.info('fold: ')
+                Learner.logger.info("FP:" + str(result['fp_item']))
+                Learner.logger.info("FN:" + str(result['fn_item']))
+            # cv_res = cross_val_score(clf, data, labels, cv=cv, scoring='f1').tolist()
+            # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
+            # separators=(',', ':'), sort_keys=True, indent=4)
+            duration = time() - t0
+            results['duration'] = duration
+            # results['cv_res'] = cv_res
+            # results['cv_res_mean'] = sum(cv_res) / n_splits
+
+            # print "\nMean score: %0.2f (+/- %0.2f)" % (np.mean(scores), np.std(scores) * 2)
+            results['mean_scores'] = np.mean(scores)
+            results['std_scores'] = np.std(scores)
+            conf_mat /= len(folds)
+            # print "Mean CM: \n", conf_mat
+
+            # print "\nMean classification measures: \n"
+            results['mean_conf_mat'] = Learner.class_report(conf_mat)
+            # return scores, conf_mat, {'fp': sorted(false_pos), 'fn': sorted(false_neg)}
+            Learner.logger.info(str(clf) + ': ' + str(results['duration']))
+            Learner.logger.info('mean scores:' + str(results['mean_scores']))
+            Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
+
+        overlap_predicted_neg = []
+        for i in range(0, len(folds)):
+            overlap_predicted_neg_i = set()
+            for j in range(0, len(clfs)):
+                clf_name = type(clfs[j]).__name__
+                items = results[clf_name]['fold'][i]['predicted_0']
+                Learner.logger.info("num:" + str(len(items)))
+                if j == 0:
+                    for item in items:
+                        overlap_predicted_neg_i.add(int(item))
+                else:
+                    tmp = set()
+                    for item in items:
+                        tmp.add(int(item))
+                    another_tmp = set()
+                    for item in overlap_predicted_neg_i:
+                        if item in tmp:
+                            another_tmp.add(item)
+                    overlap_predicted_neg_i = another_tmp
+            Learner.logger.info(len(overlap_predicted_neg_i))
+            overlap_predicted_neg.append(list(overlap_predicted_neg_i))
+        Learner.logger.info(overlap_predicted_neg)
+        return results, overlap_predicted_neg
+
 
 if __name__ == '__main__':
     logger = Utilities.set_logger('Learner')

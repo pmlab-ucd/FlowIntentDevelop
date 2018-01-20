@@ -60,6 +60,7 @@ class InstanceHandler:
         docs, y = InstanceHandler.docs(instances)
         train_data, voc, vec = Learner.gen_X_matrix(docs)
         folds = Learner.n_folds(train_data, y, fold=10)
+        """
         clf = DecisionTreeClassifier(class_weight='balanced')
         res = Learner.cross_validation(clf, folds)
         for fold in res['fold']:
@@ -69,7 +70,7 @@ class InstanceHandler:
             for item in fold['fn_item']:
                 instance = instances[item]
                 InstanceHandler.logger.info("FN:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
-
+        
         clf = MultinomialNB()
         Learner.cross_validation(clf, folds)
         clf = RandomForestClassifier(class_weight='balanced')
@@ -78,7 +79,12 @@ class InstanceHandler:
         Learner.cross_validation(clf, folds)
         clf = LogisticRegression(class_weight='balanced')
         Learner.cross_validation(clf, folds)
+        """
 
+        clfs = [svm.SVC(kernel='linear', class_weight='balanced', probability=True),
+                RandomForestClassifier(class_weight='balanced'),
+                LogisticRegression(class_weight='balanced')]
+        Learner.voting(clfs, folds)
 
 
 if __name__ == '__main__':
