@@ -24,12 +24,12 @@ class TaintDroidLogProcessor():
 
     @staticmethod
     def parse_json_log(log_file, pkg):
-        '''
+        """
         Parse the TaindDroid logs (jsons) and return a tainted record
         :param log_file:
         :param pkg:
         :return:
-        '''
+        """
         res = []
         try:
             with open(log_file) as data_file:
@@ -150,13 +150,15 @@ class TaintDroidLogProcessor():
 
     @staticmethod
     def paser_logs(sub_dir):
-        pkg = TaintDroidLogProcessor.parse_exerciser_log(sub_dir + '/UIExerciser_FlowIntent_FP_PY.log')
-        if pkg:
-            print(pkg)
-            for root, dirs, files in os.walk(sub_dir, topdown=False):
-                for filename in files:
-                    if re.search('json$', filename):
-                       return TaintDroidLogProcessor.parse_json_log(os.path.join(root, filename), pkg)
+        if os.path.exists(os.path.join(sub_dir, '/UIExerciser_FlowIntent_FP_PY.log')):
+            pkg = TaintDroidLogProcessor.parse_exerciser_log(sub_dir + '/UIExerciser_FlowIntent_FP_PY.log')
+        else:
+            pkg = os.path.basename(sub_dir)
+        print(pkg)
+        for root, dirs, files in os.walk(sub_dir, topdown=False):
+            for filename in files:
+                if re.search('json$', filename):
+                    return TaintDroidLogProcessor.parse_json_log(os.path.join(root, filename), pkg)
 
     @staticmethod
     def parse_dir(out_dir):
@@ -194,7 +196,7 @@ class TaintDroidLogProcessor():
 
 
 if __name__ == '__main__':
-    gen_filtered_taint_pcap = False
+    gen_filtered_taint_pcap = True
     dataset = 'Play_win8'
     sub_dataset = True # Whether contain sub dataset
     base_dir = os.path.join('/mnt/H_DRIVE/COSMOS/output/py/', dataset)
