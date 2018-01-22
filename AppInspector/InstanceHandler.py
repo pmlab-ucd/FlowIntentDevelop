@@ -112,5 +112,5 @@ class InstanceHandler:
 
 
 if __name__ == '__main__':
-    root_dir = 'H:/FlowIntent/Location'
+    root_dir = '/mnt/H_DRIVE/FlowIntent/Location/'
     InstanceHandler.handle(root_dir)

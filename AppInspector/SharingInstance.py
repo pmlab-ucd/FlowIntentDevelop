@@ -96,12 +96,15 @@ class SharingInstance:
         label = os.path.basename(root_dir)
         instances = []
         for root, dirs, files in os.walk(root_dir):
+            print(root_dir)
             for dir in dirs:
+                print(dir)
                 if len(SharingInstance.find_xmls(os.path.join(root, dir))) > 0:
                     instances.append(SharingInstance(os.path.join(root, dir), label))
         return instances
 
     def __init__(self, data_dir, label):
+        print(data_dir)
         self.dir = data_dir
         self.id = os.path.basename(data_dir)
         self.label = label
