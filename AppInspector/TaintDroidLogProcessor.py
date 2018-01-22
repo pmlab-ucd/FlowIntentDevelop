@@ -2,7 +2,7 @@
 import json
 import os
 import re
-#from PacpHandler import PcapHandler
+from AppInspector.PacpHandler import PcapHandler
 import dpkt
 from shutil import copytree
 
