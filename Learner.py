@@ -247,8 +247,6 @@ class Learner:
         # measures['tn_rate'] = tn / (tn + fp)  # (true negative rate)
         return measures
 
-
-
     @staticmethod
     def n_folds(data, labels, shuffle=True, fold=5):
         X = data
@@ -262,17 +260,15 @@ class Learner:
             fold = dict()
             fold['train_index'] = train_index
             fold['test_index'] = test_index
-            fold['X_train'], fold['X_test'] = X[train_index], X[test_index]
-            fold['y_train'], fold['y_test'] = y[train_index], y[test_index]
+            # fold['X_train'], fold['X_test'] = X[train_index], X[test_index]
+            # fold['y_train'], fold['y_test'] = y[train_index], y[test_index]
             fold['i'] = fold_index
 
             folds.append(fold)
         return folds
 
-
-
     @staticmethod
-    def cross_validation(clf, folds, shuffle=True, scoring='f1', n=5):
+    def cross_validation(clf, X, y, folds, shuffle=True, scoring='f1', n=5):
         t0 = time()
         results = dict()
         scores = []
@@ -282,9 +278,11 @@ class Learner:
         results['fold'] = []
         for fold in folds:
             result = dict()
+            train_index = fold['train_index']
             test_index = fold['test_index']
-            X_train, X_test = fold['X_train'], fold['X_test']
-            y_train, y_test = fold['y_train'], fold['y_test']
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+
             # I train the classifier
             clf.fit(X_train, y_train)
 
@@ -555,7 +553,7 @@ class Learner:
         return word_list
 
     @staticmethod
-    def voting(clfs, folds):
+    def voting(clfs, X, y, folds):
         t0 = time()
         results = dict()
         scores = []
@@ -569,9 +567,10 @@ class Learner:
             Learner.logger.debug(clf_name + ': ')
             for fold in folds:
                 result = dict()
+                train_index = fold['train_index']
                 test_index = fold['test_index']
-                X_train, X_test = fold['X_train'], fold['X_test']
-                y_train, y_test = fold['y_train'], fold['y_test']
+                X_train, X_test = X[train_index], X[test_index]
+                y_train, y_test = y[train_index], y[test_index]
                 # I train the classifier
                 clf.fit(X_train, y_train)
 

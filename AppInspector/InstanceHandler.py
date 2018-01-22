@@ -53,14 +53,20 @@ class InstanceHandler:
             instances += neg_instances
         else:
             instances = []
+            instances_dict = []
             for dir_path in [pos_out_dir, neg_out_dir]:
                 for root, dirs, files in os.walk(dir_path):
                     for file_name in files:
                         if file_name.endswith('.json'):
                             with open(os.path.join(root, file_name), 'r', encoding="utf8") as my_file:
-                                instance = obj(json.load(my_file))
-                                # print(instance.id)
+                                instance = json.load(my_file)
+                                instances_dict.append(instance)
+                                instance = obj(instance)
+                                InstanceHandler.logger.debug(instance.dir)
                                 instances.append(instance)
+            with open(os.path.join(instances_dir_path, 'instances.json'), 'w', encoding="utf8") as outfile:
+                json.dump(instances_dict, outfile)
+                # pd.Series(instances).to_json(outfile, orient='values')
         docs, y = InstanceHandler.docs(instances)
         train_data, voc, vec = Learner.gen_X_matrix(docs)
         InstanceHandler.logger.info('neg: ' + str(len(np.where(y == 0)[0])))
@@ -88,12 +94,14 @@ class InstanceHandler:
         clfs = [svm.SVC(kernel='linear', class_weight='balanced', probability=True),
                 RandomForestClassifier(class_weight='balanced'),
                 LogisticRegression(class_weight='balanced')]
-        res, predicted_neg = Learner.voting(clfs, folds)
-        predicted_neg_instances = []
-        for negs in predicted_neg:
-            predicted_neg_instances.append([instances[i] for i in negs])
+        res = Learner.voting(clfs, train_data, y, folds)
         with open(os.path.join(instances_dir_path, 'folds.json'), 'w') as json_file:
-            pd.Series(folds).to_json(json_file, orient='split')
+            for fold in folds:
+                fold['train_index'] = fold['train_index'].tolist()
+                fold['test_index'] = fold['test_index'].tolist()
+            # pd.Series(folds).to_json(json_file, orient='values')
+            InstanceHandler.logger.info(len(folds))
+            json.dump(folds, json_file)
         """
         with open(os.path.join(instances_dir_path, 'voting_res.json'), 'w') as json_file:
             pd.Series(res).to_json(json_file, orient='split')
