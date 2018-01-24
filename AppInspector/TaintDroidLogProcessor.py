@@ -4,7 +4,7 @@ import os
 import re
 from AppInspector.PacpHandler import PcapHandler
 import dpkt
-from shutil import copytree
+from shutil import copytree, rmtree
 from xml.dom.minidom import parseString
 
 """
@@ -193,8 +193,9 @@ class TaintDroidLogProcessor():
                     print('root:', root)
                     print('dirname:', dirname)
                     dest_dir = os.path.join(dest_dir, dirname)
-                    if not os.path.exists(dest_dir):
-                        copytree(root, dest_dir)
+                    if os.path.exists(dest_dir):
+                        rmtree(dest_dir)
+                    copytree(root, dest_dir)
 
     @staticmethod
     def rm_instance_meta(root, fn):
