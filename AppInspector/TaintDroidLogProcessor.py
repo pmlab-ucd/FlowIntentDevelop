@@ -37,9 +37,9 @@ class TaintDroidLogProcessor():
                 for taint in taints:
                     if taint['process_name'] in pkg:
                         res.append(taint)
-            return res
         except Exception as e:
             print(e)
+        return res
 
     @staticmethod
     def filter_pcap_helper(ip, data, packet):
@@ -155,10 +155,12 @@ class TaintDroidLogProcessor():
         else:
             pkg = os.path.basename(sub_dir)
         print(pkg)
+        taints = []
         for root, dirs, files in os.walk(sub_dir, topdown=False):
             for filename in files:
                 if re.search('json$', filename):
-                    return TaintDroidLogProcessor.parse_json_log(os.path.join(root, filename), pkg)
+                    taints += TaintDroidLogProcessor.parse_json_log(os.path.join(root, filename), pkg)
+        return taints
 
     @staticmethod
     def parse_dir(out_dir):
@@ -167,8 +169,7 @@ class TaintDroidLogProcessor():
             for dir in dirs:
                 print(os.path.join(root, dir))
                 taints = TaintDroidLogProcessor.paser_logs(os.path.join(root, dir))
-                if taints:
-                    for taint in taints:
+                for taint in taints:
                         if 'HTTP' in taint['channel']:
                             print(taint)
                             flows[str(taint)] = TaintDroidLogProcessor.extract_flow_pcap(taint, os.path.join(root, dir))
@@ -194,12 +195,64 @@ class TaintDroidLogProcessor():
                     if not os.path.exists(dest_dir):
                         copytree(root, dest_dir)
 
+    @staticmethod
+    def clean_folder(out_dir):
+        """
+        Clean the activity that does not contain tsrc taint
+        :return:
+        """
+        for root, dirs, files in os.walk(out_dir, tsrc = 'Location', topdown=False):
+            for fn in files:
+                if str(fn).endswith('.json'):
+                    flowintent_log = os.path.join(root, '/UIExerciser_FlowIntent_FP_PY.log')
+                    if os.path.exists(flowintent_log):
+                        pkg = TaintDroidLogProcessor.parse_exerciser_log(flowintent_log)
+                    else:
+                        pkg = os.path.basename(root)
+                    taints = TaintDroidLogProcessor.parse_json_log(os.path.join(root, fn), pkg)
+                    found = False;
+                    for taint in taints:
+                        if tsrc in taint['src']:
+                           found = True
+                    if found:
+                        os.remove(os.path.join(root, fn))
+                        filename, file_extension = os.path.splitext(fn)
+                        if '_' in fn:
+                            try:
+                                os.remove(os.path.join(root, 'first_page.png'))
+                            except:
+                                print('cannot find ' + os.path.join(root, 'first_page.png'))
+                            try:
+                                os.remove(os.path.join(root, 'first_page.xml'))
+                            except:
+                                print('cannot find ' + os.path.join(root, 'first_page.png'))
+                        else:
+                            os.remove(os.path.join(root, filename + '.png'))
+                            os.remove(os.path.join(root, filename + '.xml'))
+                        os.remove(os.path.join(root, filename + '.pcap'))
+                        print('del ' + filename)
+
 
 if __name__ == '__main__':
-    gen_filtered_taint_pcap = True
+    """
+    1. set gen_filtered_taint_pcap = True, clean_folder = False
+    2. set gen_filtered_taint_pcap = False
+    3. clean_folder = True
+    """
+    gen_filtered_taint_pcap = False
     dataset = 'Play_win8'
     sub_dataset = True # Whether contain sub dataset
     base_dir = os.path.join('/mnt/H_DRIVE/COSMOS/output/py/', dataset)
+    clean_folder = True
+
+    tsrc = 'Location'
+    out_dir = os.path.join('/mnt/H_DRIVE/FlowIntent/output/ground/', tsrc)
+    out_dir = os.path.join(out_dir, dataset)
+
+    if clean_folder:
+        TaintDroidLogProcessor.clean_folder(out_dir)
+        exit(0)
+
     if gen_filtered_taint_pcap:
         """
         Run this first: derive the filtered pcap based on the taint src
@@ -208,7 +261,4 @@ if __name__ == '__main__':
         for taint in taints:
             print(taint, taints[taint])
     else:
-        tsrc='Location'
-        out_dir = os.path.join('/mnt/H_DRIVE/FlowIntent/output/ground/', tsrc)
-        out_dir = os.path.join(out_dir, dataset)
         TaintDroidLogProcessor.organize_dir_based_tsrc(base_dir, out_dir, tsrc=tsrc, sub_dataset=sub_dataset)
