@@ -233,11 +233,11 @@ class TaintDroidLogProcessor():
                     else:
                         pkg = os.path.basename(root)
                     taints = TaintDroidLogProcessor.parse_json_log(os.path.join(root, fn), pkg)
-                    found = False;
+                    found = False
                     for taint in taints:
                         if tsrc in taint['src']:
                            found = True
-                    if found:
+                    if not found:
                         TaintDroidLogProcessor.rm_instance_meta(root, fn)
 
                 if str(fn).endswith('xml'):
@@ -276,7 +276,7 @@ if __name__ == '__main__':
     dataset = 'Play_win8'
     sub_dataset = True # Whether contain sub dataset
     base_dir = os.path.join('/mnt/H_DRIVE/COSMOS/output/py/', dataset)
-    clean_folder = True
+    clean_folder = False
 
     tsrc = 'Location'
     out_dir = os.path.join('/mnt/H_DRIVE/FlowIntent/output/ground/', tsrc)
