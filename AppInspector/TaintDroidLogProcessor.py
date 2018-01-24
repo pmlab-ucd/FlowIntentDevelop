@@ -5,6 +5,7 @@ import re
 from AppInspector.PacpHandler import PcapHandler
 import dpkt
 from shutil import copytree
+from xml.dom.minidom import parseString
 
 """
 Process the generated logs from TaintDroid after the execution of the apps
@@ -196,13 +197,35 @@ class TaintDroidLogProcessor():
                         copytree(root, dest_dir)
 
     @staticmethod
-    def clean_folder(out_dir):
+    def rm_instance_meta(root, fn):
+        filename, file_extension = os.path.splitext(fn)
+        if '_' in fn:
+            try:
+                os.remove(os.path.join(root, 'first_page.png'))
+            except:
+                print('cannot find ' + os.path.join(root, 'first_page.png'))
+            try:
+                os.remove(os.path.join(root, 'first_page.xml'))
+            except:
+                print('cannot find ' + os.path.join(root, 'first_page.png'))
+        else:
+            os.remove(os.path.join(root, filename + '.png'))
+            os.remove(os.path.join(root, filename + '.xml'))
+        os.remove(os.path.join(root, filename + '.json'))
+        os.remove(os.path.join(root, filename + '.pcap'))
+        print('del ' + filename)
+
+    @staticmethod
+    def clean_folder(out_dir, tsrc='Location'):
         """
         Clean the activity that does not contain tsrc taint
         :return:
         """
-        for root, dirs, files in os.walk(out_dir, tsrc = 'Location', topdown=False):
+        filter = ['android', 'com.android.launcher']
+        for root, dirs, files in os.walk(out_dir, topdown=False):
             for fn in files:
+                if not os.path.exists(os.path.join(root, fn)):
+                    continue
                 if str(fn).endswith('.json'):
                     flowintent_log = os.path.join(root, '/UIExerciser_FlowIntent_FP_PY.log')
                     if os.path.exists(flowintent_log):
@@ -215,22 +238,32 @@ class TaintDroidLogProcessor():
                         if tsrc in taint['src']:
                            found = True
                     if found:
-                        os.remove(os.path.join(root, fn))
-                        filename, file_extension = os.path.splitext(fn)
-                        if '_' in fn:
-                            try:
-                                os.remove(os.path.join(root, 'first_page.png'))
-                            except:
-                                print('cannot find ' + os.path.join(root, 'first_page.png'))
-                            try:
-                                os.remove(os.path.join(root, 'first_page.xml'))
-                            except:
-                                print('cannot find ' + os.path.join(root, 'first_page.png'))
-                        else:
-                            os.remove(os.path.join(root, filename + '.png'))
-                            os.remove(os.path.join(root, filename + '.xml'))
-                        os.remove(os.path.join(root, filename + '.pcap'))
-                        print('del ' + filename)
+                        TaintDroidLogProcessor.rm_instance_meta(root, fn)
+
+                if str(fn).endswith('xml'):
+                    """
+                    Clean the xml (and other relevant data) whose content does not contain any app UI
+                    """
+                    xml_path = os.path.join(root, fn)
+                    with open(xml_path, 'rb') as f:
+                        try:
+                            others = []
+                            android = False
+                            data = f.read()
+                            dom = parseString(data)
+                            nodes = dom.getElementsByTagName('node')
+                            # Iterate over all the uses-permission nodes
+                            for node in nodes:
+                                # print(node.getAttribute('text'))
+                                # print(node.toxml())
+                                if node.getAttribute('package') in filter:
+                                    android = True
+                                else:
+                                    others.append(node.getAttribute('package'))
+                            if android and len(others) == 0:
+                                TaintDroidLogProcessor.rm_instance_meta(root, fn)
+                        except:
+                            print(xml_path)
 
 
 if __name__ == '__main__':
