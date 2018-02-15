@@ -210,8 +210,14 @@ class TaintDroidLogProcessor():
             except:
                 print('cannot find ' + os.path.join(root, 'first_page.png'))
         else:
-            os.remove(os.path.join(root, filename + '.png'))
-            os.remove(os.path.join(root, filename + '.xml'))
+            try:
+                os.remove(os.path.join(root, filename + '.png'))
+            except:
+                print('cannot find ' + os.path.join(root, filename + '.png'))
+            try:
+                os.remove(os.path.join(root, filename + '.xml'))
+            except:
+                print('cannot find ' + os.path.join(root, filename + '.xml'))
         os.remove(os.path.join(root, filename + '.json'))
         os.remove(os.path.join(root, filename + '.pcap'))
         print('del ' + filename)
@@ -222,7 +228,8 @@ class TaintDroidLogProcessor():
         Clean the activity that does not contain tsrc taint
         :return:
         """
-        filter = ['android', 'com.android.launcher']
+        filter = ['android', 'com.android.launcher',
+                  'com.google.android.gsf.login', 'android.widget.LinearLayout']
         for root, dirs, files in os.walk(out_dir, topdown=False):
             for fn in files:
                 if not os.path.exists(os.path.join(root, fn)):
@@ -263,8 +270,8 @@ class TaintDroidLogProcessor():
                                     others.append(node.getAttribute('package'))
                             if android and len(others) == 0:
                                 TaintDroidLogProcessor.rm_instance_meta(root, fn)
-                        except:
-                            print(xml_path)
+                        except Exception as e:
+                            print(xml_path + ", " + str(e))
 
 
 if __name__ == '__main__':
@@ -277,7 +284,7 @@ if __name__ == '__main__':
     dataset = 'Play_win8'
     sub_dataset = True # Whether contain sub dataset
     base_dir = os.path.join('/mnt/H_DRIVE/COSMOS/output/py/', dataset)
-    clean_folder = False
+    clean_folder = True
 
     tsrc = 'Location'
     out_dir = os.path.join('/mnt/H_DRIVE/FlowIntent/output/ground/', tsrc)
