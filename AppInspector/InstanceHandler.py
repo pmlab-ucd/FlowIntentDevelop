@@ -18,7 +18,12 @@ class InstanceHandler:
     logger.setLevel(level=20)
 
     @staticmethod
-    def docs(instances):
+    def docs(instances: [SharingInstance]) -> [[], []]:
+        """
+        Convert SharingInstances into the <string, label> pairs
+        :param instances:
+        :return:
+        """
         docs = []
         labels = []
         for instance in instances:
@@ -30,13 +35,21 @@ class InstanceHandler:
         return docs, np.array(labels)
 
     @staticmethod
-    def handle(root_dir):
+    def handle(root_dir, pos_dir_name='1', neg_dir_name='0'):
+        """
+        Given the dataset of legal and illegal sharing instances
+        Perform cross-validation on them
+        :param root_dir:
+        :param pos_dir_name:
+        :param neg_dir_name:
+        """
+        # Read the sharing instances stored in the hard disk and convert them into SharingInstances
         # instances_dir_name = hashlib.md5(root_dir.encode('utf-8')).hexdigest()
         instances_dir_path = os.path.join('data', os.path.basename(root_dir))
-        pos_dir = os.path.join(root_dir, '1')
-        pos_out_dir = os.path.join(instances_dir_path, '1')
-        neg_dir = os.path.join(root_dir, '0')
-        neg_out_dir = os.path.join(instances_dir_path, '0')
+        pos_dir = os.path.join(root_dir, pos_dir_name)
+        pos_out_dir = os.path.join(instances_dir_path, pos_dir_name)
+        neg_dir = os.path.join(root_dir, neg_dir_name)
+        neg_out_dir = os.path.join(instances_dir_path, neg_dir_name)
         if not os.path.exists(instances_dir_path):
             os.makedirs(pos_out_dir)
             instances = SharingInstance.instances(pos_dir)
@@ -67,11 +80,15 @@ class InstanceHandler:
             with open(os.path.join(instances_dir_path, 'instances.json'), 'w', encoding="utf8") as outfile:
                 json.dump(instances_dict, outfile)
                 # pd.Series(instances).to_json(outfile, orient='values')
+        # Convert the SharingInstances into the <String, label> pairs
         docs, y = InstanceHandler.docs(instances)
+        # Transform the strings into the np array
         train_data, voc, vec = Learner.gen_X_matrix(docs)
         InstanceHandler.logger.info('neg: ' + str(len(np.where(y == 0)[0])))
+        # Split the data set into 10 folds
         folds = Learner.n_folds(train_data, y, fold=10) #[Fold(f) for f in Learner.n_folds(train_data, y, fold=10)]
         """
+        # Perform the init classification and check the misclassified instances
         clf = DecisionTreeClassifier(class_weight='balanced')
         res = Learner.cross_validation(clf, folds)
         for fold in res['fold']:
@@ -91,6 +108,7 @@ class InstanceHandler:
         clf = LogisticRegression(class_weight='balanced')
         Learner.cross_validation(clf, folds)
         """
+        # Wrap a bunch of classifiers and let them voting on each fold
         clfs = [svm.SVC(kernel='linear', class_weight='balanced', probability=True),
                 RandomForestClassifier(class_weight='balanced'),
                 LogisticRegression(class_weight='balanced')]
@@ -112,5 +130,5 @@ class InstanceHandler:
 
 
 if __name__ == '__main__':
-    root_dir = '/mnt/H_DRIVE/FlowIntent/Location/'
+    root_dir = '/Users/haof/Documents/FlowIntent/Location'
     InstanceHandler.handle(root_dir)

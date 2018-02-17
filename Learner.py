@@ -249,6 +249,14 @@ class Learner:
 
     @staticmethod
     def n_folds(data, labels, shuffle=True, fold=5):
+        """
+        Split the dataset into $fold folds.
+        :param data:
+        :param labels:
+        :param shuffle: whether shuffle the original dataset
+        :param fold: the number of folds
+        :return: A list of splited datasets
+        """
         X = data
         y = labels
         ''' Run x-validation and return scores, averaged confusion matrix, and df with false positives and negatives '''
@@ -554,12 +562,21 @@ class Learner:
 
     @staticmethod
     def voting(clfs, X, y, folds):
+        """
+        Let each classifier train on the n-1 folds and predict on the rest fold.
+        Then for each fold, pick the instances where all clfs say pos/neg.
+        :param clfs:
+        :param X:
+        :param y:
+        :param folds:
+        :return:
+        """
         t0 = time()
         results = dict()
         scores = []
         conf_mat = np.zeros((2, 2))  # Binary classification
 
-        # I start the cross validation
+        # Start the cross validation
         for clf in clfs:
             clf_name = type(clf).__name__
             results[clf_name] = dict()
@@ -571,10 +588,10 @@ class Learner:
                 test_index = fold['test_index']
                 X_train, X_test = X[train_index], X[test_index]
                 y_train, y_test = y[train_index], y[test_index]
-                # I train the classifier
+                # Train the classifier
                 clf.fit(X_train, y_train)
 
-                # I make the predictions
+                # Make the predictions
                 predicted = clf.predict(X_test)
                 y_plabs = np.squeeze(predicted)
                 result['predicted_0'] = test_index[np.where(y_plabs == 0)[0]]
@@ -592,15 +609,16 @@ class Learner:
 
                 # Learner.perf_measure(predicted, y_test)
 
-                # I obtain the accuracy of this fold
+                # Obtain the accuracy of this fold
                 # ac = accuracy_score(predicted, y_test)
 
-                # I obtain the confusion matrix
+                # Obtain the confusion matrix
                 confusion = metrics.confusion_matrix(y_test, predicted)
                 conf_mat += confusion
                 result['conf_mat'] = confusion.tolist()
 
-                # Collect indices of false positive and negatives, effective only shuffle=False, or backup the original data
+                # Collect indices of false positive and negatives, effective only shuffle=False,
+                # or backup the original data
                 if not isinstance(clf, svm.OneClassSVM):
                     fp_i = np.where((y_plabs == 0) & (y_test == 1))[0]
                     fn_i = np.where((y_plabs == 1) & (y_test == 0))[0]

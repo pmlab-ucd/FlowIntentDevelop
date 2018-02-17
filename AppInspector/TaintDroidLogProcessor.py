@@ -282,12 +282,12 @@ if __name__ == '__main__':
     """
     gen_filtered_taint_pcap = False
     dataset = 'Play_win8'
-    sub_dataset = True # Whether contain sub dataset
+    sub_dataset = True  # Whether contain sub dataset
     base_dir = os.path.join('/mnt/H_DRIVE/COSMOS/output/py/', dataset)
-    clean_folder = True
+    clean_folder = False
 
     tsrc = 'Location'
-    out_dir = os.path.join('/mnt/H_DRIVE/FlowIntent/output/ground/', tsrc)
+    out_dir = os.path.join('/Documents/FlowIntent/output/ground/', tsrc)
     out_dir = os.path.join(out_dir, dataset)
 
     if clean_folder:
