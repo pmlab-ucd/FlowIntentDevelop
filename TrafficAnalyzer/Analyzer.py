@@ -1,6 +1,7 @@
 import os
 import json
 from utils import Utilities
+from TrafficAnalyzer.PcapHandler import PcapHandler
 import numpy as np
 
 
@@ -9,8 +10,12 @@ class Analyzer:
     logger.setLevel(10)
 
     @staticmethod
-    def preprocess(instances_dir_path):
-        # Following the folds set by the AppInspection phase
+    def instances(instances_dir_path):
+        """
+        Retrieve the predicted neg SharingInstances using the voting results given by the InstanceHandler
+        :param instances_dir_path:
+        :return pred_negs: predicted neg SharingInstances
+        """
         with open(os.path.join(instances_dir_path, 'instances.json'), 'r') as infile:
             instances = json.load(infile)
             print(len(instances))
@@ -18,10 +23,68 @@ class Analyzer:
             with open(os.path.join(instances_dir_path, 'folds.json'), 'r') as json_file:
                 folds = json.load(json_file)
                 for fold in folds:
-                    pred_negs.append([instances[instance] for instance in fold['vot_pred_neg']])
+                    pred_negs.extend([instances[instance] for instance in fold['vot_pred_neg']])
                 print(pred_negs)
+            return pred_negs
+
+    @staticmethod
+    def pcaps(instances: [dict]) -> []:
+        """
+        Given sharing instances, get the corresponding tainted pcap
+        :param instances:
+        :return:
+        """
+        fls = []
+        for instance in instances:
+            instance_dir = instance['dir']
+            for root, dirs, files in os.walk(instance_dir):
+                for file in files:
+                    if 'filtered_' in file and str(file).endswith('pcap'):
+                        fls.append({'path': os.path.join(root, file), 'label': instance['label']})
+        print(len(fls))
+        return fls
+
+    @staticmethod
+    def pcap2jsons(pcaps, label, out_base_dir, filter_func=None, *args):
+        """
+        Generate a json file in out_dir for each given pcap
+        :param pcaps:
+        :param label: The label given by the ML module in AppInspector, may not be the ground truth
+        :param out_base_dir:
+        :param filter_func:
+        :param args:
+        :return:
+        """
+        filtered = []
+        for pcap in pcaps:
+            # Open up a test pcap file and print out the packets"""
+            flows = PcapHandler.http_requests(pcap['path'], filter_flow=filter_func, args=args)
+
+            for flow in flows:
+                flow['label'] = pcap['label']  # The ground truth label
+                flow['path'] = pcap['path']
+                filtered.append(flow)
+                print(flow)
+        out_dir = os.path.join(out_base_dir, label)
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+
+        for flow in filtered:
+            print(flow)
+            timestamp = flow['timestamp'].replace(':', '-')
+            timestamp = timestamp.replace('.', '-')
+            timestamp = timestamp.replace(' ', '_')
+            filename = str(flow['domain'] + '_' + timestamp + '.json').replace(':', '_').replace('/', '_')
+            with open(os.path.join(out_dir, filename), 'w') as outfile:
+                try:
+                    json.dump(flow, outfile)
+                except UnicodeDecodeError as e:
+                    print(e)
+        return filtered
 
 
 if __name__ == '__main__':
     instances_dir_path = "../AppInspector/data/Location/"
-    Analyzer.preprocess(instances_dir_path)
+    instances = Analyzer.instances(instances_dir_path)
+    pcaps = Analyzer.pcaps(instances)
+    Analyzer.pcap2jsons(pcaps, '0', 'data')

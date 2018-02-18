@@ -2,6 +2,7 @@
   <dictionary name="haof">
     <words>
       <w>dataset</w>
+      <w>preprocess</w>
     </words>
   </dictionary>
 </component>
