@@ -88,3 +88,11 @@ if __name__ == '__main__':
     instances = Analyzer.instances(instances_dir_path)
     pcaps = Analyzer.pcaps(instances)
     Analyzer.pcap2jsons(pcaps, '0', 'data')
+
+    # Normal pcap
+    pos_pcap = []
+    for root, dirs, files in os.walk('/Users/haof/Documents/FlowIntent/Location/pcap'):
+        for file in files:
+            if file.endswith('pcap'):
+                pos_pcap.append({'path': os.path.join(root, file), 'label': '1'})
+    Analyzer.pcap2jsons(pos_pcap, '1', 'data')
