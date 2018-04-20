@@ -74,16 +74,17 @@ class Learner:
     @staticmethod
     def dir2jsons(json_dir):
         jsons = []
+        print(json_dir)
         if json_dir is None:
             return jsons
         for root, dirs, files in os.walk(json_dir, topdown=False):
             for filename in files:
-                if '201' in filename and re.search('json$', filename):
-                    with open(os.path.join(root, filename), "rb") as fin:
+                if re.search('json$', filename):
+                    with open(os.path.join(root, filename), "r") as fin:
                         try:
                             jsons.append(json.load(fin))
                         except Exception as e:
-                            pass
+                            print(e)
                             # Utilities.logger.error(e)
         return jsons
 
@@ -148,8 +149,8 @@ class Learner:
         for doc in docs:
             instances.append(doc.doc)
             labels.append(doc.label)
-            print(doc.doc)
-            print(doc.label)
+            # print(doc.doc)
+            # print(doc.label)
 
         return instances, np.array(labels)
 
@@ -398,7 +399,9 @@ class Learner:
         clf = DecisionTreeClassifier(class_weight='balanced')
         results = None
         if n_fold != 0:
-            results = Learner.cross_validation(clf, train_data, labels, n_fold=n_fold)
+            print(n_fold)
+            folds = Learner.n_folds(train_data, labels, fold=n_fold)
+            results = Learner.cross_validation(clf, train_data, labels, folds=folds)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             Learner.logger.info('Tree: ' + str(results['duration']))
@@ -579,8 +582,7 @@ class Learner:
         # Start the cross validation
         for clf in clfs:
             clf_name = type(clf).__name__
-            results[clf_name] = dict()
-            results[clf_name]['fold'] = []
+            results[clf_name] = []
             Learner.logger.debug(clf_name + ': ')
             for fold in folds:
                 result = dict()
@@ -624,12 +626,12 @@ class Learner:
                     fn_i = np.where((y_plabs == 1) & (y_test == 0))[0]
                     result['fp_item'] = test_index[fp_i]
                     result['fn_item'] = test_index[fn_i]
-                    # print(result['fp_item'])
-                    # print(result['fn_item'])
-                results[clf_name]['fold'].append(result)
+                results[clf_name].append(result)
                 Learner.logger.debug('fold: ')
-                Learner.logger.debug("FP:" + str(result['fp_item']))
-                Learner.logger.debug("FN:" + str(result['fn_item']))
+                fps = result['fp_item']
+                Learner.logger.debug("FP:" + str(fps))
+                fns = result['fn_item']
+                Learner.logger.debug("FN:" + str(fns))
             # cv_res = cross_val_score(clf, data, labels, cv=cv, scoring='f1').tolist()
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
@@ -655,7 +657,7 @@ class Learner:
             overlap_predicted_neg_i = set()
             for j in range(0, len(clfs)):
                 clf_name = type(clfs[j]).__name__
-                items = results[clf_name]['fold'][i]['predicted_0']
+                items = results[clf_name][i]['predicted_0']
                 # Learner.logger.info("num:" + str(len(items)))
                 if j == 0:
                     for item in items:
@@ -669,7 +671,7 @@ class Learner:
                         if item in tmp:
                             another_tmp.add(item)
                     overlap_predicted_neg_i = another_tmp
-            Learner.logger.debug(len(overlap_predicted_neg_i))
+            # Learner.logger.debug(len(overlap_predicted_neg_i))
             folds[i]['vot_pred_neg'] = list(overlap_predicted_neg_i)
         return results
 

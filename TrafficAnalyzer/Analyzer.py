@@ -2,7 +2,7 @@ import os
 import json
 from utils import Utilities
 from TrafficAnalyzer.PcapHandler import PcapHandler
-import numpy as np
+from Learner import Learner
 
 
 class Analyzer:
@@ -64,13 +64,11 @@ class Analyzer:
                 flow['label'] = pcap['label']  # The ground truth label
                 flow['path'] = pcap['path']
                 filtered.append(flow)
-                print(flow)
         out_dir = os.path.join(out_base_dir, label)
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
 
         for flow in filtered:
-            print(flow)
             timestamp = flow['timestamp'].replace(':', '-')
             timestamp = timestamp.replace('.', '-')
             timestamp = timestamp.replace(' ', '_')
@@ -83,7 +81,7 @@ class Analyzer:
         return filtered
 
 
-if __name__ == '__main__':
+def preprocess():
     instances_dir_path = "../AppInspector/data/Location/"
     instances = Analyzer.instances(instances_dir_path)
     pcaps = Analyzer.pcaps(instances)
@@ -96,3 +94,14 @@ if __name__ == '__main__':
             if file.endswith('pcap'):
                 pos_pcap.append({'path': os.path.join(root, file), 'label': '1'})
     Analyzer.pcap2jsons(pos_pcap, '1', 'data')
+
+
+if __name__ == '__main__':
+    already_preprocess = False
+    if not already_preprocess:
+        preprocess()
+
+    instances, y = Learner.gen_instances(os.path.join('data', '1'),
+                                         os.path.join('data', '0'), char_wb=False, simulate=False)
+    X, feature_names, vec = Learner.gen_X_matrix(instances, tf=False)
+    Learner.train_classifier(Learner.train_tree, X, y, 5, dict(), 'tree')
