@@ -30,7 +30,7 @@ class Analyzer:
     @staticmethod
     def pcaps(instances: [dict]) -> []:
         """
-        Given sharing instances, get the corresponding tainted pcap
+        Given sharing instances, get the corresponding tainted pcap specified in instance['dir] field.
         :param instances:
         :return:
         """
@@ -89,7 +89,7 @@ def preprocess():
 
     # Normal pcap
     pos_pcap = []
-    for root, dirs, files in os.walk('/Users/haof/Documents/FlowIntent/Location/pcap'):
+    for root, dirs, files in os.walk('H:/FlowIntent/Location/pcap'):
         for file in files:
             if file.endswith('pcap'):
                 pos_pcap.append({'path': os.path.join(root, file), 'label': '1'})

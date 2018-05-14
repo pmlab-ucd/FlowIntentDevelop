@@ -101,34 +101,6 @@ class PcapHandler:
             for packet in sessions[session]:
                 timestamps.append(packet.time)
         return min(timestamps), max(timestamps)
-        """
-        with open(pcap_path, 'rb') as f:
-            print pcap_path
-            timestamps = []
-            try:
-                pcap = dpkt.pcap.Reader(f)
-            except Exception as e:
-                return
-            for timestamp, buf in pcap:
-                # Unpack the Ethernet frame (mac src/dst, ethertype)
-                try:
-                    eth = dpkt.ethernet.Ethernet(buf)
-                except Exception as e:
-                    print e
-                    continue
-                # Make sure the Ethernet data contains an IP packet
-
-
-                # Now grab the data within the Ethernet frame (the IP packet)
-                packet = eth.data
-
-                # Check for TCP in the transport layer
-                if isinstance(packet.data, dpkt.tcp.TCP):
-                    # Set the TCP data
-                    tcp = packet.data
-                    timestamps.append(timestamp)
-            print min(timestamps), max(timestamps)
-        """
 
     @staticmethod
     def http_requests(pcap_path, label='', filter_func=None, filter_flow=None, args=None):
@@ -272,14 +244,16 @@ class PcapHandler:
 
     @staticmethod
     def match_http_requests(pcap_path, filter_func, args, gen_pcap=False, tag=''):
-        '''
+        """
         Match requests based filter_func
+        :param tag:
+        :param gen_pcap:
         :param pcap:
         :param label:
         :param filter_func:
         :param args:
         :return: flows
-        '''
+        """
         # For each packet in the pcap process the contents
         with open(pcap_path, 'rb') as f:
             pcap = dpkt.pcap.Reader(f)
@@ -405,9 +379,9 @@ class PcapHandler:
                 print('Timestamp: ', str(datetime.datetime.utcfromtimestamp(timestamp)))
                 print('Ethernet Frame: ', PcapHandler.mac_addr(eth.src), PcapHandler.mac_addr(eth.dst), eth.type)
                 # print('IP: %s -> %s   (len=%d ttl=%d DF=%d MF=%d offset=%d)' (
-                    # PcapHandler.inet_to_str(ip.src), PcapHandler.inet_to_str(ip.dst), ip.len, ip.ttl, do_not_fragment,
-                    # more_fragments,
-                    #cfragment_offset))
+                # PcapHandler.inet_to_str(ip.src), PcapHandler.inet_to_str(ip.dst), ip.len, ip.ttl, do_not_fragment,
+                # more_fragments,
+                # cfragment_offset))
                 print('HTTP request: %s\n' % repr(request))
 
     @staticmethod
@@ -424,9 +398,7 @@ class PcapHandler:
         amount = os.popen('tshark -r ' + pcap_path + ' -T fields -e tcp.stream | sort -n | tail -1').read()
         streams = []
         print(amount)
-        '''
-
-
+        """
         for i in range(int(amount)):
             stream = dict()
             cmd = 'tshark -r ' + pcap_path + ' -qz follow,tcp,ascii,' + str(i)
@@ -449,7 +421,7 @@ class PcapHandler:
                     stream['index'] = i
                     print stream
                     streams.append(stream)
-        '''
+        """
 
         if out_dir is None:
             return
@@ -465,9 +437,9 @@ class PcapHandler:
 
 
 if __name__ == '__main__':
-    pcap_path = '/mnt/Documents/FlowIntent/output/test/2421536307fd9a885cc66c58419cea2e307620dfb67ab96f11aa33380da14c93' \
-                '/com.mogo.katongllk0710-08-27-45.pcap'
-    PcapHandler.tcp_streams(pcap_path)
+    input_pcap_path = '/mnt/Documents/FlowIntent/output/test/2421536307fd9a885cc66c58419cea2e307620dfb67ab96f11aa33380da14c93' \
+                      '/com.mogo.katongllk0710-08-27-45.pcap'
+    PcapHandler.tcp_streams(input_pcap_path)
 
     """
     p = rdpcap(pcap_path)
