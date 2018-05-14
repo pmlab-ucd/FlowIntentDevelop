@@ -2,10 +2,12 @@
 import json
 import os
 import re
-from AppInspector.PacpHandler import PcapHandler
-import dpkt
 from shutil import copytree, rmtree
 from xml.dom.minidom import parseString
+
+import dpkt
+
+from PacpHandler import PcapHandler
 
 """
 Process the generated logs from TaintDroid after the execution of the apps

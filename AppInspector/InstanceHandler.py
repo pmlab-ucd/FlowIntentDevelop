@@ -139,7 +139,7 @@ class InstanceHandler:
 
 
 if __name__ == '__main__':
-    root_dir = '/Users/haof/Documents/FlowIntent/Location'
+    root_dir = 'H:/FlowIntent/Location'
     InstanceHandler.logger.setLevel(10)
     Learner.logger.setLevel(20)
     InstanceHandler.handle(root_dir)

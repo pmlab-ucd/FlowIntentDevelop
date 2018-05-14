@@ -1,8 +1,9 @@
-import os
 import json
-from utils import Utilities
-from TrafficAnalyzer.PcapHandler import PcapHandler
+import os
+
 from Learner import Learner
+from PcapHandler import PcapHandler
+from utils import Utilities
 
 
 class Analyzer:
