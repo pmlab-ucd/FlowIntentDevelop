@@ -7,7 +7,7 @@ from xml.dom.minidom import parseString
 
 import dpkt
 
-from PacpHandler import PcapHandler
+from PcapHandler import PcapHandler
 
 """
 Process the generated logs from TaintDroid after the execution of the apps
