@@ -13,7 +13,7 @@ class Analyzer:
     @staticmethod
     def instances(instances_dir_path):
         """
-        Retrieve the predicted neg SharingInstances using the voting results given by the InstanceHandler
+        Retrieve the predicted neg SharingInstances using the voting results given by the ContextHandler
         :param instances_dir_path:
         :return pred_negs: predicted neg SharingInstances
         """
