@@ -11,7 +11,7 @@ from sklearn.linear_model import LogisticRegression
 
 class ContextHandler:
     """
-    Gather the labelled context and build the ML models.
+    Gather the labelled app contexts and build the ML models.
     """
     logger = Utilities.set_logger('ContextHandler')
 
@@ -134,7 +134,7 @@ class ContextHandler:
         """
         with open(os.path.join(instances_dir_path, 'voting_res.json'), 'w') as json_file:
             pd.Series(res).to_json(json_file, orient='split')
-            # json.dump(res, json_file)
+            json.dump(res, json_file)
         with open(os.path.join(instances_dir_path, 'voting_predicted_neg.json'), 'w') as json_file:
             json.dump(predicted_neg_instances, json_file)
         """

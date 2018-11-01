@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Read the logs generated from TaintDroid and extract sensitive PCAP.
+Read the logs generated from TaintDroid and extract sensitive PCAPs.
 """
 import json
 import os
@@ -291,7 +291,26 @@ def parse_dir(work_dir):
     return flows
 
 
-def match_flow(pcap_txt, ip, data, time, dirname, pcap):
+def write_pcap_txt(dirname, pcap):
+    result = os.popen('parse_pcap ' + dirname + '/' + pcap + ' > ' + dirname + '/' + pcap.split('.pcap')[0] + '.txt')
+    print(result)
+
+
+def match_flow(pcap_txt, ip, data, time, dirname, pcap, ips, urls, domains, ip_domain):
+    """
+    Match network flows in pcap based on ip, data and time.
+    :param pcap_txt:
+    :param ip:
+    :param data:
+    :param time:
+    :param dirname:
+    :param pcap:
+    :param ips:
+    :param urls:
+    :param domains:
+    :param ip_domain:
+    :return:
+    """
     data = data.replace('?', '\?')
     data = data.replace('(', '\(')
     data = data.replace(')', '\)')
@@ -299,25 +318,24 @@ def match_flow(pcap_txt, ip, data, time, dirname, pcap):
     try:
         pcap_txt = open(pcap_txt, 'r')
     except IOError:
-        #print dirname + '/' + pcap
+        # print dirname + '/' + pcap
         write_pcap_txt(dirname, pcap)
         pcap_txt = open(pcap_txt, 'r')
-        #return False
+        # return False
     lines = pcap_txt.readlines()
     flag = False
     # examine all lines in pcap-txt, check whether match
     for i in range(len(lines)):
-        #print line
-        #try:
+        # print line
+        # try:
         line = lines[i]
         if re.search(data, line):
             flag = True
-            if ip not in iptable:
-                iptable.append(ip)
+            ips.add(ip)
             try:
                 domain = line.split('//')[1].split('/')[0]
-                if domain not in domain_list:
-                    domain_list.append(domain)
+                if domain not in domains:
+                    domains.add(domain)
                     if not str(ip) in ip_domain:
                         ip_domain[str(ip)] = [domain]
                     else:
@@ -329,24 +347,24 @@ def match_flow(pcap_txt, ip, data, time, dirname, pcap):
                         uri = domain + '/' + data.split('\\')[1]
                     except:
                         uri = domain + data
-                if uri not in uri_list:
-                    uri_list.append(uri)
+                urls.add(uri)
             except IndexError:
-                print 'Data: ' + data
-                print 'ERROR URI: ' + line
+                print('Data: ' + data)
+                print('ERROR URI: ' + line)
                 continue
             try:
                 # extract port number from pcap_txt
                 port = int(lines[i - 1].split(':')[1].split(']')[0])
             except:
                 continue
-            #print port
+            # print port
             filter_pcap(dirname, pcap, time, port, ip)
     if not flag:
-        print data
+        print(data)
         return False
     else:
         return True
+
 
 if __name__ == '__main__':
     """

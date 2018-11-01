@@ -10,7 +10,7 @@ from Learner import Learner
 
 class Context:
     """
-    The class to represent the app-level context of each instance.
+    The class that represents app-level context of each running instances collected.
     """
     word_topic = {'topic_health': [u'健身', u'运动', u'健康', u'体重', u'身体', u'锻炼'],
                   'topic_sports': [u'足球', u'队员', u'篮球', u'跑步'],
@@ -71,18 +71,23 @@ def hierarchy_xml(xml_path):
                     if node.getAttribute('package') in str(xml_path):
                         all_views.append(node)
                 print(doc)
-            except:
+            except Exception as e:
+                print(e)
                 print(xml_path)
     else:
         print('XML ' + xml_path + ' does not exist!')
     return all_views, doc
 
 
-def contexts(root_dir):
-    label = os.path.basename(root_dir)
+def contexts(app_cxt_rdir):
+    """
+    extract app contexts from the given dir.
+    :type app_cxt_rdir: the root directory that stores the app contexts
+    """
+    label = os.path.basename(app_cxt_rdir)
     collection = []
-    for root, dirs, files in os.walk(root_dir):
-        print(root_dir)
+    for root, dirs, files in os.walk(app_cxt_rdir):
+        print(app_cxt_rdir)
         for dir_name in dirs:
             print(dir_name)
             if len(find_xmls(os.path.join(root, dir_name))) > 0:
@@ -92,9 +97,9 @@ def contexts(root_dir):
 
 def find_xmls(data_dir):
     xmls = []
-    for file_name in os.listdir(data_dir):
-        if file_name.endswith('.xml'):
-            xmls.append(os.path.join(data_dir, file_name))
+    for fname in os.listdir(data_dir):
+        if fname.endswith('.xml'):
+            xmls.append(os.path.join(data_dir, fname))
     return xmls
 
 
@@ -131,7 +136,8 @@ def description(html):
             return [category, app_name]
         for topic in sorted(topic_word_counter, key=topic_word_counter.get, reverse=True):
             return [topic, app_name]
-    except:
+    except Exception as e:
+        print(e)
         return [category, app_name]
 
 

@@ -7,7 +7,7 @@ import os
 
 class Utilities:
     logger = None
-    ISOTIMEFORMAT = '%m%d-%H-%M-%S'
+    ISO_TIME_FORMAT = '%m%d-%H-%M-%S'
 
     @staticmethod
     def run_cmd(cmd):
@@ -47,8 +47,8 @@ class Utilities:
         return file_handler
 
     @staticmethod
-    def set_logger(TAG):
-        logger = logging.getLogger(TAG)
+    def set_logger(tag):
+        logger = logging.getLogger(tag)
         logger.setLevel(logging.DEBUG)
 
         consolehandler = logging.StreamHandler()
@@ -117,7 +117,7 @@ class Utilities:
         return targets
 
     @staticmethod
-    def adb_id2process(id):
+    def adb_id2process(pid):
         seconds = 60
         output = check_output('adb shell ps', stderr=STDOUT, timeout=seconds)
         for line in output.split('\n'):
@@ -128,7 +128,7 @@ class Utilities:
                 # print line
                 items = str(line).split(' ')
                 items = filter(None, items)
-                if id == items[1]:
+                if pid == items[1]:
                     return items[len(items) - 1]
         else:
             return 'Unknown'
