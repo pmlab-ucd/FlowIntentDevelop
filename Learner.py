@@ -4,7 +4,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn import tree
 from sklearn.naive_bayes import BernoulliNB
-#import pydotplus
+# import pydotplus
 import codecs
 import pickle
 from sklearn.metrics import accuracy_score
@@ -49,6 +49,7 @@ class Learner:
     logger.setLevel(level=20)
 
     class LabelledDocs:
+        @staticmethod
         def stem_tokens(tokens, stemmer):
             stemmed = []
             for item in tokens:
@@ -473,8 +474,8 @@ class Learner:
             line += flow['uri']
             try:
                 docs.append(Learner.LabelledDocs(line, label, char_wb=char_wb))
-            except:
-                print(line)
+            except Exception as e:
+                Learner.logger.warn(str(e) + ':' + str(line))
         return docs
 
     @staticmethod
@@ -492,7 +493,7 @@ class Learner:
         ch2 = SelectKBest(chi2, k=k)
         X_new = ch2.fit_transform(X, y)
         feature_names = count_vectorizer.get_feature_names()
-        if feature_names != None:
+        if feature_names:
             feature_names = [feature_names[i] for i
                              in ch2.get_support(indices=True)]
         '''
@@ -622,8 +623,8 @@ class Learner:
                 # Collect indices of false positive and negatives, effective only shuffle=False,
                 # or backup the original data
                 if not isinstance(clf, svm.OneClassSVM):
-                    fp_i = np.where((y_plabs == 0) & (y_test == 1))[0]
-                    fn_i = np.where((y_plabs == 1) & (y_test == 0))[0]
+                    fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
+                    fn_i = np.where((y_plabs == 0) & (y_test == 1))[0]
                     result['fp_item'] = test_index[fp_i]
                     result['fn_item'] = test_index[fn_i]
                 results[clf_name].append(result)
@@ -678,5 +679,3 @@ class Learner:
 
 if __name__ == '__main__':
     logger = Utilities.set_logger('Learner')
-
-
