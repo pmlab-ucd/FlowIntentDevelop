@@ -275,7 +275,7 @@ def parse_logs(sub_dir):
 def parse_dir(work_dir):
     """
     Parse the given dir and for each sub dir (an app info), extract the detected taints from json and the flows based on
-     the taints from the pacap.
+     the taints from the pcap.
     :param work_dir:
     :return:
     """

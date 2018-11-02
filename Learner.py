@@ -315,15 +315,15 @@ class Learner:
 
             # Learner.perf_measure(predicted, y_test)
 
-            # I obtain the accuracy of this fold
+            # obtain the accuracy of this fold
             # ac = accuracy_score(predicted, y_test)
 
-            # I obtain the confusion matrix
+            # obtain the confusion matrix
             confusion = metrics.confusion_matrix(y_test, predicted)
             conf_mat += confusion
             result['conf_mat'] = confusion.tolist()
 
-            # Collect indices of false positive and negatives, effective only shuffle=False, or backup the original data
+            # collect indices of false positive and negatives, effective only shuffle=False, or backup the original data
             if not isinstance(clf, svm.OneClassSVM):
                 fp_i = np.where((y_plabs == 0) & (y_test == 1))[0]
                 fn_i = np.where((y_plabs == 1) & (y_test == 0))[0]
@@ -356,7 +356,7 @@ class Learner:
         return results
 
     @staticmethod
-    def train_SVM(train_data, labels, n_fold=5):
+    def train_svm(train_data, labels, n_fold=5):
         clf = svm.SVC(class_weight='balanced', probability=True)
         results = None
         if n_fold != 0:
@@ -620,7 +620,7 @@ class Learner:
                 conf_mat += confusion
                 result['conf_mat'] = confusion.tolist()
 
-                # Collect indices of false positive and negatives, effective only shuffle=False,
+                # collect indices of false positive and negatives, effective only shuffle=False,
                 # or backup the original data
                 if not isinstance(clf, svm.OneClassSVM):
                     fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
