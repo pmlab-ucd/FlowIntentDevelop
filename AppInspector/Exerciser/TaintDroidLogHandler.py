@@ -1,27 +1,27 @@
-from AsynchronousFileReader import AsynchronousFileReader
+from AppInspector.Exerciser.AsynchronousFileReader import AsynchronousFileReader
 from utils import Utilities
 import subprocess
-import Queue
+import queue
 import re
 
 '''
-Read the TaintDroid during execution of the apps
+Extract the TaintDroid output while executing the given apps.
 '''
-class TaintDroidLogHandler():
+
+
+class TaintDroidLogHandler:
     @staticmethod
     def parse_taint_log(line):
-        '''
+        """
         TaintDroidNotifyService#processLogEntry
         :param line:
         :return:
-        '''
+        """
         line = str(line).replace('\r', '')
         if line.startswith('---------'):
             return
-        taint_log = {}
+        taint_log = {'log_time': line.split(' W')[0], 'process_id': line.split('):')[0].split('(')[1].replace(' ', '')}
 
-        taint_log['log_time'] = line.split(' W')[0]
-        taint_log['process_id'] = line.split('):')[0].split('(')[1].replace(' ', '')
         taint_log['process_name'] = Utilities.adb_id2process(taint_log['process_id']).replace('\r', '')
         message = line.split(': ')[1]
         taint_log['message'] = message
@@ -119,12 +119,13 @@ class TaintDroidLogHandler():
         return sub_msg[1]
 
     @staticmethod
-    def collect_taint_log(taint_logs=[]):
+    def collect_taint_log(taint_logs=None):
+        taint_logs = [] if taint_logs is None else taint_logs
         # You'll need to add any command line arguments here.
         process = subprocess.Popen(['adb', 'logcat', '-v', 'time', '-s', 'TaintLog'], stdout=subprocess.PIPE)
 
         # Launch the asynchronous readers of the process' stdout.
-        stdout_queue = Queue.Queue()
+        stdout_queue = queue.Queue()
         stdout_reader = AsynchronousFileReader(process.stdout, stdout_queue)
         stdout_reader.start()
 
@@ -135,10 +136,10 @@ class TaintDroidLogHandler():
             while still_looking and not stdout_reader.eof():
                 while not stdout_queue.empty():
                     line = stdout_queue.get().split('\n')[0]
-                    print count, line
+                    print(count, line)
                     taint_log = TaintDroidLogHandler.parse_taint_log(line)
-                    print taint_log
-                    if taint_log != None:
+                    print(taint_log)
+                    if taint_log is not None:
                         taint_logs.append(taint_log)
                     count += 1
                     if count > 2:
@@ -149,4 +150,4 @@ class TaintDroidLogHandler():
 
 
 if __name__ == '__main__':
-    print TaintDroidLogHandler.collect_taint_log()
+    print(TaintDroidLogHandler.collect_taint_log())

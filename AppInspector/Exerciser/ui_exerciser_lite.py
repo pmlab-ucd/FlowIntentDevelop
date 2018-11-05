@@ -4,10 +4,9 @@ __author__ = 'Hao Fu'
 
 import os
 import time
-import difflib
 import subprocess
 import re
-from subprocess32 import STDOUT, check_output, Popen, PIPE
+from subprocess import STDOUT, check_output, Popen, PIPE
 from uiautomator import Device  # device as dev
 import logging
 
@@ -29,7 +28,7 @@ def run_cmd(cmd):
                     logger.debug(line)
             break
         except Exception as exc:
-            logger.warn(exc)
+            logger.warning(exc)
             result = False
             if i == 2:
                 close_emulator(emu_proc)
@@ -38,7 +37,7 @@ def run_cmd(cmd):
     return result
 
 # get app name
-def appName():
+def app_name():
     cmd = 'adb -s ' + series + ' shell pm list packages'
     app_process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT, shell=True)
@@ -136,7 +135,7 @@ appdir = 'C:\\Users\\hfu\\Documents\\apks'
 os.popen('mkdir ' + appdir + 'data')
 # package = 'com.google.android.deskclock'
 # package = 'com.android.settings'
-ISOTIMEFORMAT = '%m%d-%H-%M-%S'
+ISO_TIME_FORMAT = '%m%d-%H-%M-%S'
 # set threashold large to check behaviors underware
 logger = logging.getLogger('UiDroid-Console')
 logger.setLevel(logging.DEBUG)
@@ -158,9 +157,9 @@ if __name__ == '__main__':
     dev = Device(series)
     for apk in apks:
         os.popen('adb devices')
-        before = appName()
+        before = app_name()
         os.popen('adb -s ' + series + ' install ' + appdir + apk)
-        after = appName()
+        after = app_name()
         applist = after - before
         if len(applist) != 1:
             logger.info(apk)
@@ -171,7 +170,7 @@ if __name__ == '__main__':
             continue
         for package in applist:
             os.popen('adb -s ' + series + ' shell am start -n fu.hao.uidroid/.TaintDroidNotifyController')
-            current_time = time.strftime(ISOTIMEFORMAT, time.localtime())
+            current_time = time.strftime(ISO_TIME_FORMAT, time.localtime())
             os.popen('adb -s ' + series + ' shell "su 0 date -s `date +%Y%m%d.%H%M%S`"')
             os.popen('adb -s ' + series + ' shell monkey -p com.lexa.fakegps --ignore-crashes 1')
             flag = True

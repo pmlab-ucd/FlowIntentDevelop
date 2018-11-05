@@ -1,3 +1,8 @@
+Prerequisites:
+python 3.6 with libs such as uiautomator, subprocess, numpy, scikit-learn, bs4, etc.
+Dynamic taint analysis supported firmware, such as TaintDroid.
+
+
 AppInspector
 0. Set up a clean TaintDroid environment, with UiDroid_TaintNotify installed (to extract logs from TaintDroid). 
 1. Run the exerciser (e.g. UIDroid) to automatically collect sensitive transmissions and the corresponding app-level contexts. 
