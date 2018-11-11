@@ -7,7 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 from utils import Utilities
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression
-
+import sys
 
 class ContextHandler:
     """
@@ -141,7 +141,8 @@ class ContextHandler:
 
 
 if __name__ == '__main__':
-    root_dir = 'H:/FlowIntent/Location'
+    root_dir = sys.argv[1]
+    print('The data stored at: ', root_dir)
     ContextHandler.logger.setLevel(10)
     Learner.logger.setLevel(20)
     ContextHandler.handle(root_dir)
