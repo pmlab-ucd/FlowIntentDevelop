@@ -3,6 +3,7 @@ import logging
 import psutil
 import threading
 import os
+import time
 
 
 class Utilities:
@@ -144,3 +145,7 @@ class Utilities:
             # check whether the process name matches
             if proc.name() == name:
                 proc.kill()
+
+    @staticmethod
+    def current_time():
+        return time.strftime(Utilities.ISO_TIME_FORMAT, time.localtime())

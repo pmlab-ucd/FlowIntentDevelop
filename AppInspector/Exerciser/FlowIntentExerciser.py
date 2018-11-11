@@ -19,7 +19,7 @@ class FlowIntentExerciser(UIExerciser):
         :param examined:
         :return:
         """
-        current_time = time.strftime(Utilities.ISO_TIME_FORMAT, time.localtime())
+        current_time = Utilities.current_time()
         self.logger.info('base name: ' + os.path.basename(apk))
         apk_name, apk_extension = os.path.splitext(apk)
 
@@ -69,11 +69,12 @@ class FlowIntentExerciser(UIExerciser):
         # UIExerciser.run_adb_cmd('shell "nohup logcat -v threadtime -s "UiDroid_Taint" > /sdcard/' + package + current_time +'.log &"')
 
         # cmd = 'adb -s ' + series + ' shell "nohup /data/local/tcpdump -w /sdcard/' + package + current_time + '.pcap &"'
-        self.logger.info('tcpdump begins')
-        cmd = 'adb -s ' + series + ' shell /data/local/tcpdump -w /sdcard/' + package + '_' + current_time + '.pcap'
+        # self.logger.info('tcpdump begins')
+        # cmd = 'adb -s ' + series + ' shell /data/local/tcpdump -w /sdcard/' + package + '_' + current_time + '.pcap'
+        UIExerciser.tcpdump_begin(package, current_time, nohup=False)
         # os.system(cmd)
-        self.logger.info(cmd)
-        process = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
+        # self.logger.info(cmd)
+        # process = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
 
         UIExerciser.run_adb_cmd('shell monkey -p ' + package + '_' + ' --ignore-crashes 1')
         for times in range(1, 3):
@@ -93,12 +94,11 @@ class FlowIntentExerciser(UIExerciser):
         # UIExerciser.run_adb_cmd('shell am force-stop fu.hao.uidroid')
         # os.system("TASKKILL /F /PID {pid} /T".format(pid=process.pid))
         time.sleep(60)
-        process.kill()  # takes more time
-        out_pcap = output_dir + package + current_time  + '.pcap'
+        # process.kill()  # takes more time
+        out_pcap = output_dir + package + current_time + '.pcap'
         while not os.path.exists(out_pcap) or os.stat(out_pcap).st_size < 2:
             time.sleep(5)
-            cmd = 'pull /sdcard/' + package + '_' + current_time  + '.pcap ' + out_pcap
-            UIExerciser.run_adb_cmd(cmd)
+            UIExerciser.tcpdump_end(output_dir, package, current_time)
             if not os.path.exists(out_pcap):
                 self.logger.warning('The pcap does not exist.')
                 # raise Exception('The pcap does not exist.')
