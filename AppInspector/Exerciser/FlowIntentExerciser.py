@@ -2,10 +2,11 @@ from AppInspector.Exerciser.UIExerciser import UIExerciser
 from utils import Utilities
 import time
 import os
-from subprocess import STDOUT, Popen, PIPE
+# from subprocess import STDOUT, Popen, PIPE
 from AppInspector.Exerciser.TaintDroidLogHandler import TaintDroidLogHandler
 import json
 from uiautomator import Device
+import sys
 
 
 class FlowIntentExerciser(UIExerciser):
@@ -121,8 +122,8 @@ class FlowIntentExerciser(UIExerciser):
 
 
 if __name__ == '__main__':
-    device = 'nexus4'
-    user = 'hfu'
+    device = sys.argv[1]  #'nexus4'
+    user = sys.argv[2] # 'hfu'
 
     if device == 'nexus4':
         series = '01b7006e13dd12a1'
