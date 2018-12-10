@@ -9,6 +9,7 @@ from sklearn import svm
 from sklearn.linear_model import LogisticRegression
 import sys
 
+
 class ContextHandler:
     """
     Gather the labelled app contexts and build the ML models.
