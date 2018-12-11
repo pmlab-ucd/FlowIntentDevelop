@@ -27,56 +27,39 @@ class TaintDroidLogHandler:
         taint_log['message'] = message
         taint_log['dst'] = TaintDroidLogHandler.get_dst(message)
         taint_log['src'] = TaintDroidLogHandler.get_taint_src(message)
-        if TaintDroidLogHandler.is_TaintedSend(message):
+        if TaintDroidLogHandler.is_tainted_send(message):
             taint_log['channel'] = 'HTTP'
-        elif TaintDroidLogHandler.is_TaintedSSLSend(message):
+        elif TaintDroidLogHandler.is_tainted_ssl_send(message):
             taint_log['channel'] = 'HTTPS'
-        elif TaintDroidLogHandler.is_TaintedSMS(message):
+        elif TaintDroidLogHandler.is_tainted_sms(message):
             taint_log['channel'] = 'SMS'
         else:
             taint_log['channel'] = 'INTERNAL'
         return taint_log
 
     @staticmethod
-    def is_TaintedSend(msg):
+    def is_tainted_send(msg):
         return 'libcore.os.send' in msg
 
     @staticmethod
-    def is_TaintedSSLSend(msg):
+    def is_tainted_ssl_send(msg):
         return 'SSLOutputStream.write' in msg
 
     @staticmethod
-    def is_TaintedSMS(msg):
+    def is_tainted_sms(msg):
         return 'GsmSMSDispatcher.sendSMS' in msg or 'CdmaSMSDispatcher.sendSMS' in msg
 
     @staticmethod
     def get_dst(msg):
         pattern = re.compile('\((.*)\)')
-        all = pattern.findall(msg)
-        if len(all) > 0:
-            return all[0]
+        content = pattern.findall(msg)
+        if len(content) > 0:
+            return content[0]
         return "Unknown"
 
     @staticmethod
     def get_taint_src(msg):
-        MAP = {'1': "Location",
-               '2': "Address Book (ContactsProvider)",
-               '4': "Microphone Input",
-               '8': "Phone Number",
-               '10': "GPS Location",
-               '20': "NET-based Location",
-               '40': "Last known Location",
-               '80': "camera",
-               '100': "accelerometer",
-               '200': "SMS",
-               '400': "IMEI",
-               '800': "IMSI",
-               '1000': "ICCID (SIM card identifier)",
-               '2000': "Device serial number",
-               '4000': "User account information",
-               '8000': "browser history"}
-
-        MAP = {
+        hex_type = {
             0x00000001: "Location",
             0x00000002: "Address Book (ContactsProvider)",
             0x00000004: "Microphone Input",
@@ -97,15 +80,15 @@ class TaintDroidLogHandler:
         sub_msg = msg.split('0x')
         if len(sub_msg) < 2:
             return "Unknown"
-        hex = sub_msg[1].split(' ')[0]
-        taint = int(hex, 16)
+        hex_code = sub_msg[1].split(' ')[0]
+        taint = int(hex_code, 16)
         tags = []
         for i in range(32):
             t = (taint >> i) & 0x1
             t = int(t << i)
 
-            if t in MAP:
-                tags.append(MAP[t])
+            if t in hex_type:
+                tags.append(hex_type[t])
             else:
                 pass
                 # tags.append("Unknown")

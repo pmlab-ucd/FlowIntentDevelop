@@ -277,6 +277,11 @@ class UIExerciser:
 
     @staticmethod
     def check_examined(out_dir):
+        """
+        Check existing dirs, each dir represents an examined app.
+        :param out_dir:
+        :return:
+        """
         examined = []
         for root, dirs, files in os.walk(out_dir, topdown=False):
             for name in dirs:
