@@ -10,7 +10,7 @@ from Learner import Learner
 
 class Context:
     """
-    The class that represents app-level context of each running instances collected.
+    App-level context of each running instances collected.
     """
     word_topic = {'topic_health': [u'健身', u'运动', u'健康', u'体重', u'身体', u'锻炼'],
                   'topic_sports': [u'足球', u'队员', u'篮球', u'跑步'],
@@ -48,13 +48,18 @@ class Context:
                           sort_keys=True, indent=4, ensure_ascii=False)
 
 
-def find_html(data_dir: object) -> object:
+def find_html(data_dir: str) -> object:
     for filename in os.listdir(data_dir):
         if filename.endswith('.html'):
             return os.path.join(data_dir, filename)
 
 
 def hierarchy_xml(xml_path):
+    """
+    Extract views and texts of the given XML.
+    :param xml_path: The path of the hierarchy XML file.
+    :return: A list of views included in the XML and a list of texts shown on the views.
+    """
     all_views = []
     doc = []
     if os.path.exists(xml_path):
@@ -81,8 +86,8 @@ def hierarchy_xml(xml_path):
 
 def contexts(app_cxt_rdir):
     """
-    extract app contexts from the given dir.
-    :type app_cxt_rdir: the root directory that stores the app contexts
+    Extract app contexts from the given dir.
+    :type app_cxt_rdir: The root directory that stores the app contexts.
     """
     label = os.path.basename(app_cxt_rdir)
     collection = []
