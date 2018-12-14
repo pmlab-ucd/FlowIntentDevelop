@@ -7,6 +7,10 @@ import datetime
 import socket
 from dpkt.compat import compat_ord
 
+from utils import Utilities
+
+logger = Utilities.set_logger('PcapHandler')
+
 # import win_inet_pton
 
 '''
@@ -254,7 +258,7 @@ class PcapHandler:
         :param args:
         :return: flows
         """
-        # For each packet in the pcap process the contents
+        # For each packet in the pcap, process the contents
         with open(pcap_path, 'rb') as f:
             pcap = dpkt.pcap.Reader(f)
             flows = []
@@ -309,8 +313,9 @@ class PcapHandler:
                     flow['post_body'] = request.body
                     try:
                         flow['domain'] = request.headers['host']
-                    except:
+                    except Exception as e:
                         flow['domain'] = str(PcapHandler.inet_to_str(packet.dst))
+                        logger
                     flow['uri'] = request.uri
                     flow['headers'] = request.headers
                     flow['platform'] = 'unknown'

@@ -12,7 +12,6 @@ import dpkt
 from PcapHandler import PcapHandler
 from utils import Utilities
 
-
 logger = Utilities.set_logger('TaintDroidLogProcessor')
 
 
@@ -197,23 +196,23 @@ def rm_instance_meta(root, fn):
     logger.info('del ' + filename)
 
 
-def organize_dir_based_tsrc(base_dir, out_dir, tsrc='Location', sub_dataset=True):
+def organize_dir_based_tsrc(src_dir, to_dir, taint='Location', sub_dataset=True):
     """
-    Copy the dir to the destination dir (the dir for labelling groud truth) based on taint src.
-    :param base_dir:
-    :param out_dir:
-    :param tsrc:
-    :param sub_dataset:
+    Copy the dir to the destination dir (the dir for labelling groud truth) based on the taint.
+    :param src_dir:
+    :param to_dir:
+    :param taint: The taint type.
+    :param sub_dataset: Whether is a dataset located inside a bigger dataset.
     """
-    for root, dirs, files in os.walk(base_dir, topdown=False):
+    for root, dirs, files in os.walk(src_dir, topdown=False):
         for filename in files:
             # If keyword "filter" and founded taint src in filename, means it is a target pkg.
-            if 'filter' in filename and tsrc in filename:
+            if 'filter' in filename and taint in filename:
                 dirname = os.path.basename(os.path.dirname(os.path.join(root, filename)))
-                dest_dir = out_dir
+                dest_dir = to_dir
                 if sub_dataset:
                     dataset_name = os.path.basename(os.path.abspath(os.path.join(root, os.pardir)))
-                    dest_dir = os.path.join(out_dir, dataset_name)
+                    dest_dir = os.path.join(to_dir, dataset_name)
                 logger.info('root:', root)
                 logger.info('dirname:', dirname)
                 dest_dir = os.path.join(dest_dir, dirname)
@@ -224,7 +223,7 @@ def organize_dir_based_tsrc(base_dir, out_dir, tsrc='Location', sub_dataset=True
 
 def extract_flow_pcap_helper(taint, pcap_path):
     """
-    Given a taint record, extract the flow in the pcap file and output the pcap flow.
+    The helper of extract_flow_pcap.
     :param taint:
     :return:
     """
@@ -234,9 +233,9 @@ def extract_flow_pcap_helper(taint, pcap_path):
     elif 'data' in taint['message']:
         data = taint['message'].split('data')[1]
     else:
-        raise Exception
+        raise Exception('Cannot extract data from taint message')
     try:
-        # Get filtered http requests based on Taintlogs (ip, data)
+        # Get filtered http requests based on TaintDroid logs (ip, data)
         flows = PcapHandler.http_requests(pcap_path, filter_func=filter_pcap,
                                           args=[ip, data])
         # Output to pcaps
@@ -248,13 +247,13 @@ def extract_flow_pcap_helper(taint, pcap_path):
         # return PcapHandler.match_http_requests(pcap_path, TaintDroidLogProcessor.filter_pcap, [ip, data],
         #                                      gen_pcap=True, tag=TaintDroidLogProcessor.gen_tag(taint['src']))
     except Exception as e:
-        print(e)
+        logger.info(str(e))
         return []
 
 
 def extract_flow_pcap(taint, sub_dir):
     """
-
+    Given a taint record, extract the flow in the pcap file and output the pcap flow.
     :rtype: object
     :param taint:
     :param sub_dir:
@@ -274,11 +273,11 @@ def parse_logs(sub_dir):
     :param sub_dir:
     :return:
     """
-    if os.path.exists(os.path.join(sub_dir, '/UIExerciser_FlowIntent_FP_PY.log')):
+    if os.path.exists(os.path.join(sub_dir, 'UIExerciser_FlowIntent_FP_PY.log')):
         pkg = parse_exerciser_log(sub_dir + '/UIExerciser_FlowIntent_FP_PY.log')
     else:
         pkg = os.path.basename(sub_dir)
-    print(pkg)
+    logger.info(pkg)
     taints = []
     for root, dirs, files in os.walk(sub_dir, topdown=False):
         for filename in files:
@@ -289,30 +288,37 @@ def parse_logs(sub_dir):
 
 def parse_dir(work_dir):
     """
-    Parse the given dir and for each sub dir (an app info), extract the detected taints from json and the flows based on
-     the taints from the pcap.
+    Parse the given dir and for each sub dir (an app's data), extract the detected taints from json and the flows based
+    on the taints from the pcap.
     :param work_dir:
     :return:
     """
     flows = {}
     for root, dirs, files in os.walk(work_dir, topdown=False):
         for dir_name in dirs:
-            print(os.path.join(root, dir_name))
+            logger.info(os.path.join(root, dir_name))
             taints = parse_logs(os.path.join(root, dir_name))
             for taint in taints:
                 if 'HTTP' in taint['channel']:
-                    print(taint)
+                    logger.info(taint)
                     flows[str(taint)] = extract_flow_pcap(taint, os.path.join(root, dir_name))
     return flows
 
 
 def write_pcap_txt(dirname, pcap):
+    """
+    TODO
+    :param dirname:
+    :param pcap:
+    :return:
+    """
     result = os.popen('parse_pcap ' + dirname + '/' + pcap + ' > ' + dirname + '/' + pcap.split('.pcap')[0] + '.txt')
     print(result)
 
 
 def match_flow(pcap_txt, ip, data, time, dirname, pcap, ips, urls, domains, ip_domain):
     """
+    TODO
     Match network flows in pcap based on ip, data and time.
     :param pcap_txt:
     :param ip:
@@ -341,7 +347,7 @@ def match_flow(pcap_txt, ip, data, time, dirname, pcap, ips, urls, domains, ip_d
     flag = False
     # Examine all lines in pcap-txt, check whether match
     for i in range(len(lines)):
-        logger.debug(line)
+        logger.debug(str(line))
         line = lines[i]
         if re.search(data, line):
             flag = True
@@ -388,24 +394,17 @@ if __name__ == '__main__':
     2. set gen_filtered_taint_pcap = False
     3. clean_folder = True
     """
-    gen_filtered_taint_pcap = False
     dataset = 'Play_win8'
     sub_dataset = True  # Whether contain sub dataset.
     base_dir = os.path.join('/mnt/H_DRIVE/COSMOS/output/py/', dataset)
-    clean = False
 
-    tsrc = 'Location'
-    out_dir = os.path.join('/Documents/FlowIntent/output/ground/', tsrc)
+    taint_type = 'Location'
+    out_dir = os.path.join('/Documents/FlowIntent/output/ground/', taint_type)
     out_dir = os.path.join(out_dir, dataset)
 
-    if clean:
-        clean_folder(out_dir)
-        exit(0)
-
-    if gen_filtered_taint_pcap:
-        """
-        Run this first: derive the filtered pcap based on the taint src
-        """
-        parse_dir(base_dir)
-    else:
-        organize_dir_based_tsrc(base_dir, out_dir, tsrc=tsrc, sub_dataset=sub_dataset)
+    # Derive the filtered pcap based on the taint src.
+    parse_dir(base_dir)
+    # Copy the dir to the destination dir (the dir for labelling groud truth) based on the taint.
+    organize_dir_based_tsrc(base_dir, out_dir, taint_type, sub_dataset)
+    # Remove the Activities that do not contain the taint or meaningful UI.
+    clean_folder(out_dir)
