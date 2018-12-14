@@ -1,8 +1,7 @@
 import json
-import os
 
 from Learner import Learner
-from PcapHandler import PcapHandler
+from PcapHandler import *
 from utils import Utilities
 
 
@@ -59,7 +58,7 @@ class Analyzer:
         filtered = []
         for pcap in pcaps:
             # Open up a test pcap file and print out the packets"""
-            flows = PcapHandler.http_requests(pcap['path'], filter_flow=filter_func, args=args)
+            flows = http_requests(pcap['path'], filter_flow=filter_func, args=args)
 
             for flow in flows:
                 flow['label'] = pcap['label']  # The ground truth label

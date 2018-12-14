@@ -31,8 +31,8 @@ def mac_addr(address):
 
 
 def filter_pcap_helper(ip, port, packet):
-    src_ip = PcapHandler.inet_to_str(packet.src)
-    dst_ip = PcapHandler.inet_to_str(packet.dst)
+    src_ip = inet_to_str(packet.src)
+    dst_ip = inet_to_str(packet.dst)
     sport = packet.data.sport
     dport = packet.data.dport
 
@@ -85,7 +85,7 @@ def pcap2jsons(pcap_dir, out_dir, filter_func=None, *args):
                     label = 'unknown'
                 """Open up a test pcap file and print out the packets"""
                 print pcap_path
-                filtered += PcapHandler.http_requests(pcap_path, filter_flow=filter_func, args=args)
+                filtered += http_requests(pcap_path, filter_flow=filter_func, args=args)
     print out_dir
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -151,7 +151,7 @@ def filter_tcp_streams(pcap_path, out_dir, json_dir, gen_streams=False, tag=''):
             if json['src'] != '147.32.84.165' and json['dest'] != '147.32.84.165':
                 continue
             print json
-            PcapHandler.filter_pcap(out_dir, pkts, json['dest'],
+            filter_pcap(out_dir, pkts, json['dest'],
                                     json['sport'], tag=tag)
 
         """
@@ -195,7 +195,7 @@ def filter_tcp_streams(pcap_path, out_dir, json_dir, gen_streams=False, tag=''):
                         ts_pks.append(pkts)
                     except:
                         continue
-                    PcapHandler.duration_pcap(ts_pcap_path)
+                    duration_pcap(ts_pcap_path)
 
 
 def durations(base_dir, timestamps, label):
@@ -205,7 +205,7 @@ def durations(base_dir, timestamps, label):
             # print(os.path.join(root, name))
             if str(name).endswith('.pcap'):
                 pcap_path = os.path.join(root, name)
-                min_val, max_val = PcapHandler.duration_pcap(pcap_path)
+                min_val, max_val = duration_pcap(pcap_path)
                 data = dict()
                 data['min'] = datetime.datetime.utcfromtimestamp(min_val)
                 data['max'] = datetime.datetime.utcfromtimestamp(max_val)
@@ -280,4 +280,4 @@ if __name__ == '__main__':
     #filter_tcp_streams(pcap_path,
      #         '/mnt/Documents/flows/Event/147-32-84-165/' + label, '/mnt/Documents/flows/Event/' + label,
       #                 tag=label, gen_streams=True)
-    streams = PcapHandler.tcp_streams(pcap_path, out_dir='/mnt/Documents/flows/Event/147-32-84-165/')
+    streams = tcp_streams(pcap_path, out_dir='/mnt/Documents/flows/Event/147-32-84-165/')

@@ -8,8 +8,7 @@ import os
 import re
 from shutil import copytree, rmtree
 from xml.dom.minidom import parseString
-import dpkt
-from PcapHandler import PcapHandler
+from PcapHandler import *
 from utils import Utilities
 
 logger = Utilities.set_logger('TaintDroidLogProcessor')
@@ -69,8 +68,8 @@ def filter_pcap_helper(ip, data, packet):
     # Set the TCP data
     tcp = packet.data
 
-    src_ip = PcapHandler.inet_to_str(packet.src)
-    dst_ip = PcapHandler.inet_to_str(packet.dst)
+    src_ip = inet_to_str(packet.src)
+    dst_ip = inet_to_str(packet.dst)
     # sport = packet.data.sport
     # dport = packet.data.dport
 
@@ -236,12 +235,12 @@ def extract_flow_pcap_helper(taint, pcap_path):
         raise Exception('Cannot extract data from taint message')
     try:
         # Get filtered http requests based on TaintDroid logs (ip, data)
-        flows = PcapHandler.http_requests(pcap_path, filter_func=filter_pcap,
+        flows = http_requests(pcap_path, filter_func=filter_pcap,
                                           args=[ip, data])
         # Output to pcaps
         for flow in flows:
-            pkts = PcapHandler.get_packets(pcap_path)
-            PcapHandler.filter_pcap(os.path.dirname(pcap_path), pkts, flow['dest'],
+            pkts = get_packets(pcap_path)
+            filter_pcap(os.path.dirname(pcap_path), pkts, flow['dest'],
                                     flow['sport'], tag=gen_tag(taint['src']))
         return flows
         # return PcapHandler.match_http_requests(pcap_path, TaintDroidLogProcessor.filter_pcap, [ip, data],
