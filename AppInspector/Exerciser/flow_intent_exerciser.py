@@ -3,7 +3,7 @@ from utils import Utilities
 import time
 import os
 # from subprocess import STDOUT, Popen, PIPE
-from AppInspector.Exerciser.TaintDroidLogHandler import TaintDroidLogHandler
+from AppInspector.Exerciser.taint_droid_log_collector import TaintDroidLogHandler
 import json
 from uiautomator import Device
 import sys
@@ -123,7 +123,7 @@ class FlowIntentExerciser(UIExerciser):
 
 if __name__ == '__main__':
     device = sys.argv[1]  #'nexus4'
-    user = sys.argv[2] # 'hfu'
+    user = sys.argv[2]  # 'hfu'
 
     if device == 'nexus4':
         series = '01b7006e13dd12a1'

@@ -1,7 +1,7 @@
 import json
 
 from learner import Learner
-from PcapHandler import *
+from pcap_processor import *
 from utils import Utilities
 
 

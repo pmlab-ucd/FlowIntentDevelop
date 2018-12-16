@@ -8,7 +8,7 @@ The sensitive flows are located through matching IP and data written inside the 
 import json
 from shutil import copytree, rmtree
 from xml.dom.minidom import parseString
-from PcapHandler import *
+from pcap_processor import *
 from utils import Utilities
 
 logger = Utilities.set_logger('TaintDroidLogProcessor')

@@ -13,7 +13,7 @@ import psutil
 import json
 from AppInspector.Exerciser.sign_apks import sign_apk
 from AppInspector.Exerciser.ViewClientHandler import ViewClientHandler
-from AppInspector.Exerciser.TaintDroidLogHandler import TaintDroidLogHandler
+from AppInspector.Exerciser.taint_droid_log_collector import TaintDroidLogHandler
 
 ISO_TIME_FORMAT = Utilities.ISO_TIME_FORMAT
 logger = Utilities.set_logger('UIExerciser')
