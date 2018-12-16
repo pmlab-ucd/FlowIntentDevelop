@@ -1,7 +1,7 @@
-from AppInspector.Context import Context, Object, contexts
+from AppInspector.context import Context, Object, contexts
 import json
 import os
-from Learner import Learner
+from learner import Learner
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from utils import Utilities

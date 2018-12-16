@@ -179,7 +179,7 @@ def match_http_requests(pcap_path, filter_func, args, gen_pcap=False, tag=''):
                     flow['domain'] = request.headers['host']
                 except Exception as e:
                     flow['domain'] = str(inet_to_str(packet.dst))
-                    logger
+                    logger.debug(str(e))
                 flow['uri'] = request.uri
                 flow['headers'] = request.headers
                 flow['platform'] = 'unknown'
@@ -207,7 +207,7 @@ def match_http_requests(pcap_path, filter_func, args, gen_pcap=False, tag=''):
                     '''
                     pkts = get_packets(pcap_path)
                     filter_pcap(os.path.dirname(pcap_path), pkts, inet_to_str(packet.dst),
-                                            tcp.sport, tag=tag)
+                                tcp.sport, tag=tag)
 
         return flows
 
@@ -239,20 +239,20 @@ def mac_addr(address):
 
 
 def http_requests_helper(pcap, label='', filter_func=None, filter_flow=None, args=None):
-    """Print out information about each packet in a pcap
-
+    """
+    Print out information about each packet in a pcap
            Args:
                pcap: dpkt pcap reader object (dpkt.pcap.Reader)
-        """
+    """
     # For each packet in the pcap process the contents
     flows = []
     examined = []  # Do not know why there are redundant flows
     for timestamp, buf in pcap:
-
         # Unpack the Ethernet frame (mac src/dst, ethertype)
         try:
             eth = dpkt.ethernet.Ethernet(buf)
-        except:
+        except Exception as e:
+            logger.debug(str(e))
             continue
         # Make sure the Ethernet data contains an IP packet
         if not isinstance(eth.data, dpkt.ip.IP):
@@ -296,8 +296,9 @@ def http_requests_helper(pcap, label='', filter_func=None, filter_flow=None, arg
             flow['post_body'] = request.body.decode("ISO-8859-1")
             try:
                 flow['domain'] = request.headers['host']
-            except:
+            except Exception as e:
                 flow['domain'] = str(inet_to_str(packet.dst))
+                logger.debug(str(e))
             flow['uri'] = request.uri
             flow['headers'] = request.headers
             flow['platform'] = 'unknown'
@@ -308,25 +309,25 @@ def http_requests_helper(pcap, label='', filter_func=None, filter_flow=None, arg
             flow['dport'] = tcp.dport
             flow['request'] = repr(request)
             flow['timestamp'] = timestamp
-            # print repr(flow)
-            id = flow['dest'] + str(flow['sport']) + flow['uri']
+            logger.debug(repr(flow))
+            identifier = flow['dest'] + str(flow['sport']) + flow['uri']
             if filter_flow is not None and filter_flow(args, flow):
                 continue
 
-            if id not in examined:
+            if identifier not in examined:
                 flows.append(flow)
-                examined.append(id)
+                examined.append(identifier)
 
-            # Check for Header spanning acrossed TCP segments
+            # Check for Header spanning crossing TCP segments
             if not tcp.data.endswith(b'\r\n'):
-                # print('\nHEADER TRUNCATED! Reassemble TCP segments!\n')
+                logger.debug('\nHEADER TRUNCATED! Reassemble TCP segments!\n')
                 pass
     return flows
 
 
 def inet_to_str(inet):
-    """Convert inet object to a string
-
+    """
+    Convert inet object to a string
         Args:
             inet (inet struct): inet network address
         Returns:
@@ -348,9 +349,7 @@ def http_requests(pcap_path, label='', filter_func=None, filter_flow=None, args=
             return None
         # flows = print_http_requests(pcap, label, filter_func, args)
         return http_requests_helper(pcap, label, filter_func=filter_func,
-                                                filter_flow=filter_flow, args=args)
-        # out_dir = os.curdir + '/output/' + os.path.basename(os.path.abspath(os.path.join(root, os.pardir))) + '/' + str(
-        #   label) + '/'
+                                    filter_flow=filter_flow, args=args)
 
 
 def duration(pkts):
@@ -389,13 +388,15 @@ def filter_pcap_tshark(dirname, pcap_path, ip, port, tag=''):
 
 def filter_pcap(dirname, pkts, ip, port, tag=''):
     """
-    Timestamp is not accurate
-    :param dirname:
-    :param pkts:
-    :param ip:
-    :param port:
-    :param tag:
-    :return:
+    Given a set of packets, find the packets matching the given condition such as ip and port,
+    and then write the selected packets into a pcap.
+    Timestamp is not accurate.
+    :param dirname: The output dir
+    :param pkts: A set of packets.
+    :param ip: The filter condition -- ip.
+    :param port: The filter condition -- port.
+    :param tag: The tag used in the filename of the output pcap.
+    :return: None.
     """
     ip = str(ip)
     port = str(port)
@@ -403,19 +404,24 @@ def filter_pcap(dirname, pkts, ip, port, tag=''):
     if os.path.exists(output_path):
         return
 
-    filtered = []
+    filtered = []  # To store the selected packets.
     for pkt in pkts:
-        if TCP in pkt:
-            # print pkt[TCP].sport
-            if str(pkt[TCP].sport) == str(port) or str(pkt[TCP].dport) == str(port) \
-                    and pkt[IP].dst == ip or pkt[IP].src == ip:
-                # print 'Found: ' + pkt[IP].dst
-                filtered.append(pkt)
+        # If it is a not TCP, must not be a HTTP packet.
+        if TCP not in pkt:
+            return
+
+        logger.debug(pkt[TCP].sport)
+        # If the src port or the dest port matches and if the src ip or the dest ip matches.
+        if str(pkt[TCP].sport) == str(port) or str(pkt[TCP].dport) == str(port) \
+                and pkt[IP].dst == ip or pkt[IP].src == ip:
+            logger.debug('Found: ' + pkt[IP].dst)
+            filtered.append(pkt)
 
     # filtered = (pkt for pkt in pkts if
     #            TCP in pkt
     #            and (str(pkt[TCP].sport) == port or str(pkt[TCP].dport) == port)
     #            and (pkt[IP].dst == ip or pkt[IP].src == ip))
+    # Write to a new pcap.
     wrpcap(output_path, filtered)
 
 

@@ -1,4 +1,4 @@
-from Learner import Learner
+from learner import Learner
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
 

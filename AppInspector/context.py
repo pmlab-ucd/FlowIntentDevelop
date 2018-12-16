@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from xml.dom.minidom import parseString
 import hashlib
 import json
-from Learner import Learner
+from learner import Learner
 
 
 class Context:
