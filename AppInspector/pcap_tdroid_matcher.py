@@ -241,9 +241,12 @@ def extract_flow_pcap_helper(taint, pcap_path):
                               args=[ip, data])
         # Output to pcaps.
         for flow in flows:
-            pkts = get_packets(pcap_path)
-            filter_pcap(os.path.dirname(pcap_path), pkts, flow['dest'],
-                        flow['sport'], tag=gen_tag(taint['src']))
+            try:
+                pkts = rdpcap(pcap_path)
+                filter_pcap(os.path.dirname(pcap_path), pkts, flow['dest'],
+                            flow['sport'], tag=gen_tag(taint['src']))
+            except IOError as e:
+                logger.warn(e.args)
         return flows
         # return PcapHandler.match_http_requests(pcap_path, TaintDroidLogProcessor.filter_pcap, [ip, data],
         #                                      gen_pcap=True, tag=TaintDroidLogProcessor.gen_tag(taint['src']))
