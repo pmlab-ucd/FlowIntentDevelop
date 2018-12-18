@@ -317,8 +317,7 @@ def filter_pcap_by_ip(dirname, pkts, ip):
         return
     filtered = []
     for pkt in pkts:
-        if TCP in pkt:
-            if pkt[IP].dst == ip or pkt[IP].src == ip:
+        if TCP in pkt and (pkt[IP].dst == ip or pkt[IP].src == ip):
                 logger.debug('Found: ' + pkt[IP].dst)
                 filtered.append(pkt)
     wrpcap(output_path, filtered)

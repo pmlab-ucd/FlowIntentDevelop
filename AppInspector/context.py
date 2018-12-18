@@ -6,16 +6,20 @@ from xml.dom.minidom import parseString
 import hashlib
 import json
 from learner import Learner
+from utils import Utilities
+
+logger = Utilities.set_logger('context')
 
 
 class Context:
     """
     App-level context of each running instances collected.
     """
-    word_topic = {'topic_health': [u'健身', u'运动', u'健康', u'体重', u'身体', u'锻炼'],
-                  'topic_sports': [u'足球', u'队员', u'篮球', u'跑步'],
-                  'topic_weather': [u'天气', u'预报', u'温度', u'湿度', 'PM2\.5'],
-                  'topic_map': [u'旅行', u'地图', u'地理', u'GPS', u'导航', u'旅游']}
+
+    word_topics = {'topic_health': [u'健身', u'运动', u'健康', u'体重', u'身体', u'锻炼'],
+                   'topic_sports': [u'足球', u'队员', u'篮球', u'跑步'],
+                   'topic_weather': [u'天气', u'预报', u'温度', u'湿度', 'PM2\\.5'],
+                   'topic_map': [u'旅行', u'地图', u'地理', u'GPS', u'导航', u'旅游']}
 
     def __init__(self, data_dir, label):
         print(data_dir)
@@ -63,8 +67,8 @@ def hierarchy_xml(xml_path):
     all_views = []
     doc = []
     if os.path.exists(xml_path):
-        with open(xml_path, 'rb') as f:
-            try:
+        try:
+            with open(xml_path, 'rb') as f:
                 dom = parseString(f.read())
                 nodes = dom.getElementsByTagName('node')
                 # Iterate over all the uses-permission nodes
@@ -76,11 +80,11 @@ def hierarchy_xml(xml_path):
                     if node.getAttribute('package') in str(xml_path):
                         all_views.append(node)
                 print(doc)
-            except Exception as e:
+        except Exception as e:
                 print(e)
                 print(xml_path)
     else:
-        print('XML ' + xml_path + ' does not exist!')
+        logger.warn('XML ' + xml_path + ' does not exist!')
     return all_views, doc
 
 
@@ -92,9 +96,9 @@ def contexts(app_cxt_rdir):
     label = os.path.basename(app_cxt_rdir)
     collection = []
     for root, dirs, files in os.walk(app_cxt_rdir):
-        print(app_cxt_rdir)
+        logger.info(app_cxt_rdir)
         for dir_name in dirs:
-            print(dir_name)
+            logger.info(dir_name)
             if len(find_xmls(os.path.join(root, dir_name))) > 0:
                 collection.append(Context(os.path.join(root, dir_name), label))
     return collection
@@ -118,20 +122,18 @@ def description(html):
         category_soup = BeautifulSoup(str(soup.select('.nav')), "html.parser")
         category = category_soup.select('span')[2].a.string
         desc_soup = BeautifulSoup(str(soup.select('.brief-long')), "html.parser")
-        desc = str(desc_soup.select('p'))  # .split('data_url')[1]
+        desc = str(desc_soup.select('p'))
         unseen = []
         word_list = Learner.str2words(desc)
         topic_word_counter = {}
         for word in word_list:
             if word in unseen:
-                # print word
                 continue
             else:
-                # print word
                 unseen.append(word)
-                for topic in Context.word_topic.keys():
-                    if word in Context.word_topic[topic]:
-                        print(word)
+                for topic in Context.word_topics.keys():
+                    if word in Context.word_topics[topic]:
+                        logger.debug(word)
                         if topic not in topic_word_counter.keys():
                             topic_word_counter[topic] = 1
                         else:
@@ -142,7 +144,7 @@ def description(html):
         for topic in sorted(topic_word_counter, key=topic_word_counter.get, reverse=True):
             return [topic, app_name]
     except Exception as e:
-        print(e)
+        logger.warn(str(e))
         return [category, app_name]
 
 
