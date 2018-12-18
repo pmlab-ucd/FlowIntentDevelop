@@ -9,12 +9,13 @@ from sklearn import svm
 from sklearn.linear_model import LogisticRegression
 import sys
 
+logger = Utilities.set_logger('ContextProcessor')
 
-class ContextHandler:
+
+class ContextProcessor:
     """
     Gather the labelled app contexts and build the ML models.
     """
-    logger = Utilities.set_logger('ContextHandler')
 
     @staticmethod
     def docs(instances: [Context]) -> [[], []]:
@@ -35,7 +36,7 @@ class ContextHandler:
         return docs, np.array(labels)
 
     @staticmethod
-    def handle(root_dir, pos_dir_name='1', neg_dir_name='0'):
+    def process(root_dir, pos_dir_name='1', neg_dir_name='0'):
         """
         Given the dataset of legal and illegal sharing instances
         Perform cross-validation on them
@@ -60,7 +61,7 @@ class ContextHandler:
 
             os.makedirs(neg_out_dir)
             neg_instances = contexts(neg_dir)
-            ContextHandler.logger.info('neg: ' + str(len(neg_instances)))
+            logger.info('neg: ' + str(len(neg_instances)))
             for instance in neg_instances:
                 with open(os.path.join(neg_out_dir, instance.id + '.json'), 'w', encoding="utf8") as outfile:
                     outfile.write(instance.json())
@@ -76,17 +77,17 @@ class ContextHandler:
                                 instance = json.load(my_file)
                                 instances_dict.append(instance)
                                 instance = Object(instance)
-                                # ContextHandler.logger.debug(instance.dir)
+                                # ContextProcessor.logger.debug(instance.dir)
                                 instances.append(instance)
             with open(os.path.join(instances_dir_path, 'instances.json'), 'w', encoding="utf8") as outfile:
                 json.dump(instances_dict, outfile)
                 # pd.Series(instances).to_json(outfile, orient='values')
         # Convert the SharingInstances into the <String, label> pairs
-        docs, y = ContextHandler.docs(instances)
+        docs, y = ContextProcessor.docs(instances)
         # Transform the strings into the np array
         train_data, voc, vec = Learner.gen_X_matrix(docs)
-        ContextHandler.logger.info('neg: ' + str(len(np.where(y == 0)[0])))
-        ContextHandler.logger.info('pos: ' + str(len(np.where(y == 1)[0])))
+        logger.info('neg: ' + str(len(np.where(y == 0)[0])))
+        logger.info('pos: ' + str(len(np.where(y == 1)[0])))
         # Split the data set into 10 folds
         folds = Learner.n_folds(train_data, y, fold=10)  # [Fold(f) for f in Learner.n_folds(train_data, y, fold=10)]
         """
@@ -96,10 +97,10 @@ class ContextHandler:
         for fold in res['fold']:
             for item in fold['fp_item']:
                 instance = instances[item]
-                ContextHandler.logger.info("FP:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
+                ContextProcessor.logger.info("FP:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
             for item in fold['fn_item']:
                 instance = instances[item]
-                ContextHandler.logger.info("FN:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
+                ContextProcessor.logger.info("FN:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
         
         clf = MultinomialNB()
         Learner.cross_validation(clf, folds)
@@ -117,20 +118,20 @@ class ContextHandler:
         res = Learner.voting(clfs, train_data, y, folds)
         for clf in clfs:
             clf_name = type(clf).__name__
-            ContextHandler.logger.debug('CLF:' + clf_name)
+            logger.debug('CLF:' + clf_name)
             for fold in res[clf_name]:
                 if 'fp_item' not in fold:
                     continue
                 for fp in fold['fp_item']:
-                    ContextHandler.logger.debug('FP:' + str(instances[fp].ui_doc) + "," + instances[fp].topic)
+                    logger.debug('FP:' + str(instances[fp].ui_doc) + "," + instances[fp].topic)
                 for fn in fold['fn_item']:
-                    ContextHandler.logger.debug('FN:' + str(instances[fn].ui_doc) + "," + instances[fn].topic)
+                    logger.debug('FN:' + str(instances[fn].ui_doc) + "," + instances[fn].topic)
         with open(os.path.join(instances_dir_path, 'folds.json'), 'w') as json_file:
             for fold in folds:
                 fold['train_index'] = fold['train_index'].tolist()
                 fold['test_index'] = fold['test_index'].tolist()
             # pd.Series(folds).to_json(json_file, orient='values')
-            ContextHandler.logger.info(len(folds))
+            logger.info(len(folds))
             json.dump(folds, json_file)
         """
         with open(os.path.join(instances_dir_path, 'voting_res.json'), 'w') as json_file:
@@ -143,7 +144,7 @@ class ContextHandler:
 
 if __name__ == '__main__':
     root_dir = sys.argv[1]
-    print('The data stored at: ', root_dir)
-    ContextHandler.logger.setLevel(10)
+    logger.setLevel(10)
+    logger.info('The data stored at: ', root_dir)
     Learner.logger.setLevel(20)
-    ContextHandler.handle(root_dir)
+    ContextProcessor.process(root_dir)

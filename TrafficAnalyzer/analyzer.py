@@ -13,7 +13,7 @@ class Analyzer:
     @staticmethod
     def pred_pos_contexts(pred_contexts_path):
         """
-        Retrieve the predicted positive (abnormal) "contexts" using the voting results given by ContextHandler.
+        Retrieve the predicted positive (abnormal) "contexts" using the voting results given by ContextProcessor.
         :param pred_contexts_path: Where the predicted contexts locate.
         :return pred_pos: predicted positive SharingInstances
         """
@@ -25,32 +25,32 @@ class Analyzer:
                 folds = json.load(json_file)
                 for fold in folds:
                     pred_pos.extend([pred_contexts[context] for context in fold['vot_pred_neg']])
-                print(pred_pos)
+                logger.info(pred_pos)
             return pred_pos
 
     @staticmethod
     def pcaps(contexts: [dict]) -> []:
         """
-        Given contexts, get the corresponding tainted pcap specified in instance['dir'] field.
+        Given contexts, get the corresponding tainted pcap specified in context['dir'] field.
         :param contexts:
         :return:
         """
         fls = []
-        for instance in contexts:
-            instance_dir = instance['dir']
+        for context in contexts:
+            instance_dir = context['dir']
             for root, dirs, files in os.walk(instance_dir):
                 for file in files:
                     if 'filtered_' in file and str(file).endswith('pcap'):
-                        fls.append({'path': os.path.join(root, file), 'label': instance['label']})
-        print(len(fls))
+                        fls.append({'path': os.path.join(root, file), 'label': context['label']})
+        logger.info(len(fls))
         return fls
 
     @staticmethod
     def pcap2jsons(pcaps, label, out_base_dir, filter_func=None, *args):
         """
-        Generate a json file in out_dir for each given pcap
+        Generate a json file in out_dir for each given pcap.
         :param pcaps:
-        :param label: The label given by the ML module in AppInspector, may not be the ground truth
+        :param label: The label given by the ML module of AppInspector, may not match the ground truth.
         :param out_base_dir:
         :param filter_func:
         :param args:
@@ -62,7 +62,7 @@ class Analyzer:
             flows = http_requests(pcap['path'], filter_flow=filter_func, args=args)
 
             for flow in flows:
-                flow['label'] = pcap['label']  # The ground truth label
+                flow['label'] = pcap['label']  # The label of ground truth.
                 flow['path'] = pcap['path']
                 filtered.append(flow)
         out_dir = os.path.join(out_base_dir, label)
@@ -74,17 +74,18 @@ class Analyzer:
             timestamp = timestamp.replace('.', '-')
             timestamp = timestamp.replace(' ', '_')
             filename = str(flow['domain'] + '_' + timestamp + '.json').replace(':', '_').replace('/', '_')
-            with open(os.path.join(out_dir, filename), 'w') as outfile:
-                try:
+            try:
+                with open(os.path.join(out_dir, filename), 'w') as outfile:
                     json.dump(flow, outfile)
-                except UnicodeDecodeError as e:
-                    print(e)
+            except UnicodeDecodeError as e:
+                    logger.warn(e)
         return filtered
 
 
-def preprocess():
+def preprocess(neg_pcap_dir):
     """
     Extract pos and neg pcaps from labelled context directories, and then transform them into jsons.
+    :param neg_pcap_dir: The directory of labelled negative pcaps.
     """
     # Positive/Abnormal pcaps.
     contexts_dir = "../AppInspector/data/Location/"
@@ -94,7 +95,7 @@ def preprocess():
 
     # Negative/Normal pcaps.
     pcaps = []
-    for root, dirs, files in os.walk('H:/FlowIntent/Location/pcap'):
+    for root, dirs, files in os.walk(neg_pcap_dir):
         for file in files:
             if file.endswith('pcap'):
                 pcaps.append({'path': os.path.join(root, file), 'label': '0'})
@@ -102,9 +103,13 @@ def preprocess():
 
 
 if __name__ == '__main__':
+    logger.setLevel(10)
+    neg_pcap_dir = sys.argv[1]
+    logger.info('The negative pcap stored at: ', neg_pcap_dir)
+
     preprocessed = False
     if not preprocessed:
-        preprocess()
+        preprocess(neg_pcap_dir)
 
     instances, y = Learner.gen_instances(os.path.join('data', '1'),
                                          os.path.join('data', '0'), char_wb=False, simulate=False)
