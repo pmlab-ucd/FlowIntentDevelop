@@ -4,38 +4,39 @@ from learner import Learner
 from pcap_processor import *
 from utils import Utilities
 
+logger = Utilities.set_logger('Analyzer')
+
 
 class Analyzer:
-    logger = Utilities.set_logger('Analyzer')
     logger.setLevel(10)
 
     @staticmethod
-    def instances(instances_dir_path):
+    def pred_pos_contexts(pred_contexts_path):
         """
-        Retrieve the predicted neg SharingInstances using the voting results given by the ContextHandler
-        :param instances_dir_path:
-        :return pred_negs: predicted neg SharingInstances
+        Retrieve the predicted positive (abnormal) "contexts" using the voting results given by ContextHandler.
+        :param pred_contexts_path: Where the predicted contexts locate.
+        :return pred_pos: predicted positive SharingInstances
         """
-        with open(os.path.join(instances_dir_path, 'instances.json'), 'r') as infile:
-            instances = json.load(infile)
-            print(len(instances))
-            pred_negs = []
-            with open(os.path.join(instances_dir_path, 'folds.json'), 'r') as json_file:
+        with open(os.path.join(pred_contexts_path, 'pred_contexts.json'), 'r') as infile:
+            pred_contexts = json.load(infile)
+            logger.info(len(pred_contexts))
+            pred_pos = []
+            with open(os.path.join(pred_contexts_path, 'folds.json'), 'r') as json_file:
                 folds = json.load(json_file)
                 for fold in folds:
-                    pred_negs.extend([instances[instance] for instance in fold['vot_pred_neg']])
-                print(pred_negs)
-            return pred_negs
+                    pred_pos.extend([pred_contexts[context] for context in fold['vot_pred_neg']])
+                print(pred_pos)
+            return pred_pos
 
     @staticmethod
-    def pcaps(instances: [dict]) -> []:
+    def pcaps(contexts: [dict]) -> []:
         """
-        Given sharing instances, get the corresponding tainted pcap specified in instance['dir] field.
-        :param instances:
+        Given contexts, get the corresponding tainted pcap specified in instance['dir'] field.
+        :param contexts:
         :return:
         """
         fls = []
-        for instance in instances:
+        for instance in contexts:
             instance_dir = instance['dir']
             for root, dirs, files in os.walk(instance_dir):
                 for file in files:
@@ -82,23 +83,27 @@ class Analyzer:
 
 
 def preprocess():
-    instances_dir_path = "../AppInspector/data/Location/"
-    instances = Analyzer.instances(instances_dir_path)
-    pcaps = Analyzer.pcaps(instances)
-    Analyzer.pcap2jsons(pcaps, '0', 'data')
+    """
+    Extract pos and neg pcaps from labelled context directories, and then transform them into jsons.
+    """
+    # Positive/Abnormal pcaps.
+    contexts_dir = "../AppInspector/data/Location/"
+    contexts = Analyzer.pred_pos_contexts(contexts_dir)
+    pcaps = Analyzer.pcaps(contexts)
+    Analyzer.pcap2jsons(pcaps, '1', 'data')
 
-    # Normal pcap
-    pos_pcap = []
+    # Negative/Normal pcaps.
+    pcaps = []
     for root, dirs, files in os.walk('H:/FlowIntent/Location/pcap'):
         for file in files:
             if file.endswith('pcap'):
-                pos_pcap.append({'path': os.path.join(root, file), 'label': '1'})
-    Analyzer.pcap2jsons(pos_pcap, '1', 'data')
+                pcaps.append({'path': os.path.join(root, file), 'label': '0'})
+    Analyzer.pcap2jsons(pcaps, '0', 'data')
 
 
 if __name__ == '__main__':
-    already_preprocess = False
-    if not already_preprocess:
+    preprocessed = False
+    if not preprocessed:
         preprocess()
 
     instances, y = Learner.gen_instances(os.path.join('data', '1'),
