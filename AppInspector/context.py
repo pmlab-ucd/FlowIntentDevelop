@@ -6,9 +6,9 @@ from xml.dom.minidom import parseString
 import hashlib
 import json
 from learner import Learner
-from utils import Utilities
+from utils import set_logger
 
-logger = Utilities.set_logger('context')
+logger = set_logger('context')
 
 
 class Context:

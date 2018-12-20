@@ -3,7 +3,7 @@
 
 from uiautomator import Device
 from xml.dom.minidom import parseString
-from utils import Utilities
+from utils import ISO_TIME_FORMAT, set_logger, run_method, set_file_log, kill_by_name, current_time
 import os
 from subprocess import STDOUT, check_output, Popen, PIPE
 import re
@@ -15,8 +15,7 @@ from AppInspector.Exerciser.sign_apks import sign_apk
 from AppInspector.Exerciser.ViewClientHandler import ViewClientHandler
 from AppInspector.Exerciser.taint_droid_log_collector import TaintDroidLogHandler
 
-ISO_TIME_FORMAT = Utilities.ISO_TIME_FORMAT
-logger = Utilities.set_logger('UIExerciser')
+logger = set_logger('UIExerciser')
 
 
 class UIExerciser:
@@ -132,7 +131,7 @@ class UIExerciser:
 
     @staticmethod
     def tcpdump_begin(package=None, current_time=None, nohup=False):
-        current_time = current_time if current_time is not None else Utilities.current_time()
+        current_time = current_time if current_time is not None else current_time()
         package = package if package is not None else 'collect'
         if not nohup:
             cmd = ' shell /data/local/tcpdump -w /sdcard/' + package + '_' + current_time + '.pcap'
@@ -143,7 +142,7 @@ class UIExerciser:
 
     @staticmethod
     def tcpdump_end(output_dir, package=None, current_time=None):
-        current_time = current_time if current_time is not None else Utilities.current_time()
+        current_time = current_time if current_time is not None else current_time()
         package = package if package is not None else 'collect'
         UIExerciser.run_adb_cmd(
             'shell ps | grep tcpdump | awk \'{print $2}\' | xargs adb -s ' + UIExerciser.series + ' shell kill')
@@ -219,7 +218,7 @@ class UIExerciser:
                 logger.error('Cannot start Activity: ' + activity)
                 continue
             if UIExerciser.start_activity(package, activity):
-                current_time = Utilities.current_time()
+                cur_time = current_time()
                 if traffic:
                     UIExerciser.run_adb_cmd('logcat -c')
                     logger.info('clear logcat')  # self.screenshot(output_dir, activity)
@@ -233,7 +232,7 @@ class UIExerciser:
                     # os.system(cmd)
                     # logger.info(cmd)
                     # process = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
-                    UIExerciser.tcpdump_begin(package, current_time, nohup=False)
+                    UIExerciser.tcpdump_begin(package, cur_time, nohup=False)
                 time.sleep(2)
                 # self.screenshot(output_dir, activity)
                 for i in range(1, 3):
@@ -243,23 +242,23 @@ class UIExerciser:
                             UIExerciser.emu_proc = UIExerciser.open_emu(UIExerciser.emu_loc, UIExerciser.emu_name)
                         else:
                             raise Exception('Cannot start Activity ' + activity)
-                    if Utilities.run_method(UIExerciser.screenshot, 180, args=[output_dir, activity, False]):
+                    if run_method(UIExerciser.screenshot, 180, args=[output_dir, activity, False]):
                         break
                     else:
                         logger.warnning("Timeout while dumping XML for " + activity)
                 if traffic:
                     time.sleep(10)
                     # process.kill()  # takes more time
-                    out_pcap = output_dir + package + current_time + '.pcap'
-                    UIExerciser.tcpdump_end(output_dir, package, current_time)
+                    out_pcap = output_dir + package + cur_time + '.pcap'
+                    UIExerciser.tcpdump_end(output_dir, package, cur_time)
                     if not os.path.exists(out_pcap):
                         logger.warning('The pcap does not exist.')
                         # raise Exception('The pcap does not exist.')
                     else:
-                        UIExerciser.run_adb_cmd('shell rm /sdcard/' + package + current_time + '.pcap')
+                        UIExerciser.run_adb_cmd('shell rm /sdcard/' + package + cur_time + '.pcap')
 
                     taint_logs = []
-                    Utilities.run_method(TaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
+                    run_method(TaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
                     with open(output_dir + activity + '.json', 'w') as outfile:
                         json.dump(taint_logs, outfile)
             else:
@@ -368,7 +367,7 @@ class UIExerciser:
 
     @staticmethod
     def run_cmd(cmd, seconds=60):
-        Utilities.logger.debug('Run cmd: ' + cmd)
+        logger.debug('Run cmd: ' + cmd)
         for i in range(1, 3):
             time.sleep(5)
             try:
@@ -380,11 +379,10 @@ class UIExerciser:
                     tmp = line.replace(' ', '')
                     tmp = tmp.replace('\n', '')
                     if tmp != '':
-                        Utilities.logger.debug(line)
+                        logger.debug(line)
                 return result
             except Exception as exc:
                 logger.error(exc)
-                result = False
                 if not UIExerciser.check_dev_online(UIExerciser.series):
                     if UIExerciser.emu_proc:
                         UIExerciser.close_emulator(UIExerciser.emu_proc)
@@ -394,7 +392,7 @@ class UIExerciser:
         raise Exception(cmd)
 
     @staticmethod
-    def start_taintdroid(series=None):
+    def start_taintdroid():
         UIExerciser.run_adb_cmd('shell am start -n fu.hao.uidroid/.TaintDroidNotifyController')
 
     @staticmethod
@@ -442,14 +440,12 @@ class UIExerciser:
                     UIExerciser.touch(dev, clickable.getAttribute('bounds'))
         time.sleep(5)
 
-
     def inspired_run(self, series, apk, examined, trigger_java_dir):
-        self.trigger_java_dir = trigger_java_dir
         # apk = 'F:\\Apps\\COMMUNICATION\\com.mobanyware.apk'
-        self.logger.info('base name: ' + os.path.basename(apk))
+        logger.info('base name: ' + os.path.basename(apk))
         apk_name, apk_extension = os.path.splitext(apk)
 
-        self.logger.info(apk_name)
+        logger.info(apk_name)
         if '_modified' not in apk_name:
             return
             # apk_modified = apk_name + '_modified.apk'
@@ -460,12 +456,12 @@ class UIExerciser:
         apk_name = os.path.basename(apk_name)
 
         if apk_name in examined:
-            self.logger.error('Already examined ' + apk_name)
+            logger.error('Already examined ' + apk_name)
             return
 
         cmd = 'adb devices'
         os.system(cmd)
-        self.logger.info(apk_modified)
+        logger.info(apk_modified)
 
         # current_time = time.strftime(ISOTIMEFORMAT, time.localtime())
         par_dir = os.path.basename(os.path.abspath(os.path.join(apk, os.pardir)))  # the parent folder of the apk
@@ -473,40 +469,40 @@ class UIExerciser:
         package = self.get_package_name(self.aapt_loc, apk_modified)
 
         if not package:
-            self.logger.error('Not a valid pkg.')
+            logger.error('Not a valid pkg.')
             return
 
-        csvpath = self.get_csv_path(self.trigger_java_dir, par_dir, apk_name)
+        csvpath = self.get_csv_path(trigger_java_dir, par_dir, apk_name)
         if not os.path.isfile(csvpath):
-            self.logger.error('tgt_Act.csv does not exist:' + csvpath)
+            logger.error('tgt_Act.csv does not exist:' + csvpath)
             return
 
         output_dir = self.out_base_dir + par_dir + '/' + apk_name + '/'
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        filehandler = Utilities.set_file_log(self.logger, output_dir + 'COSMOS_TRIGGER_PY.log')
-        self.logger.info('apk:' + apk_modified)
-        self.logger.info('pkg:' + package)
-        self.logger.info('csv: ' + csvpath)
+        file_handler = set_file_log(logger, output_dir + 'COSMOS_TRIGGER_PY.log')
+        logger.info('apk:' + apk_modified)
+        logger.info('pkg:' + package)
+        logger.info('csv: ' + csvpath)
 
         UIExerciser.uninstall_pkg(series, package)
         UIExerciser.install_apk(series, apk_modified)
 
-        current_time = time.strftime(ISO_TIME_FORMAT, time.localtime())
+        cur_time = time.strftime(ISO_TIME_FORMAT, time.localtime())
         UIExerciser.run_adb_cmd('shell monkey -p com.lexa.fakegps --ignore-crashes 1')
         d = Device()
         d(text='Set location').click()
 
         UIExerciser.run_adb_cmd('logcat -c')
-        self.logger.info('clear logcat')  # self.screenshot(output_dir, activity)
+        logger.info('clear logcat')  # self.screenshot(output_dir, activity)
 
         # UIExerciser.run_adb_cmd('shell "nohup /data/local/tcpdump -w /sdcard/' + package + current_time  + '.pcap &"')
         # UIExerciser.run_adb_cmd('shell "nohup logcat -v threadtime -s "UiDroid_Taint" > /sdcard/' + package + current_time +'.log &"')
 
         # cmd = 'adb -s ' + series + ' shell "nohup /data/local/tcpdump -w /sdcard/' + package + current_time + '.pcap &"'
-        self.logger.info('tcpdump begins')
-        cmd = 'adb -s ' + series + ' shell /data/local/tcpdump -w /sdcard/' + package + '_' + current_time + '.pcap'
+        logger.info('tcpdump begins')
+        cmd = 'adb -s ' + series + ' shell /data/local/tcpdump -w /sdcard/' + package + '_' + cur_time + '.pcap'
         # os.system(cmd)
         logger.info(cmd)
         process = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
@@ -519,10 +515,10 @@ class UIExerciser:
                     UIExerciser.emu_proc = UIExerciser.open_emu(UIExerciser.emu_loc, UIExerciser.emu_name)
                 else:
                     raise Exception('Cannot start the default Activity')
-            if Utilities.run_method(self.screenshot, 180, args=[output_dir, '', True, package]):
+            if run_method(self.screenshot, 180, args=[output_dir, '', True, package]):
                 break
             else:
-                self.logger.warn("Time out while dumping XML for the default activity")
+                logger.warn("Time out while dumping XML for the default activity")
 
         # UIExerciser.adb_kill('logcat')
         # Utilities.adb_kill('tcpdump')
@@ -530,11 +526,11 @@ class UIExerciser:
         # os.system("TASKKILL /F /PID {pid} /T".format(pid=process.pid))
         time.sleep(10)
         process.kill()  # takes more time
-        out_pcap = output_dir + package + '_' + current_time + '.pcap'
+        out_pcap = output_dir + package + '_' + cur_time + '.pcap'
         try:
             while not os.path.exists(out_pcap) or os.stat(out_pcap).st_size < 2:
                 time.sleep(5)
-                cmd = 'pull /sdcard/' + package + '_' + current_time + '.pcap ' + out_pcap
+                cmd = 'pull /sdcard/' + package + '_' + cur_time + '.pcap ' + out_pcap
                 UIExerciser.run_adb_cmd(cmd)
                 process.kill()  # takes more time
         except Exception as e:
@@ -547,25 +543,24 @@ class UIExerciser:
         # UIExerciser.run_adb_cmd('pull /sdcard/' + package + current_time + '.log ' + output_dir)
         # UIExerciser.run_adb_cmd('shell rm /sdcard/' + package + current_time + '.log')
         taint_logs = []
-        Utilities.run_method(TaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
-        with open(output_dir + package + '_' + current_time + '.json', 'w') as outfile:
+        run_method(TaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
+        with open(output_dir + package + '_' + cur_time + '.json', 'w') as outfile:
             json.dump(taint_logs, outfile)
 
         self.start_activities(package, csvpath, output_dir)
 
         self.uninstall_pkg(series, package)
 
-        filehandler.close()
-        self.logger.removeHandler(filehandler)
-        Utilities.kill_by_name('adb.exe')
+        file_handler.close()
+        logger.removeHandler(file_handler)
+        kill_by_name('adb.exe')
 
     def inspired_run_lite(self, series, apk, examined, trigger_java_dir):
-        self.trigger_java_dir = trigger_java_dir
         # apk = 'F:\\Apps\\COMMUNICATION\\com.mobanyware.apk'
-        self.logger.info('base name: ' + os.path.basename(apk))
+        logger.info('base name: ' + os.path.basename(apk))
         apk_name, apk_extension = os.path.splitext(apk)
 
-        self.logger.info(apk_name)
+        logger.info(apk_name)
         if '_modified' not in apk_name:
             return
             # apk_modified = apk_name + '_modified.apk'
@@ -576,12 +571,12 @@ class UIExerciser:
         apk_name = os.path.basename(apk_name)
 
         if apk_name in examined:
-            self.logger.error('Already examined ' + apk_name)
+            logger.error('Already examined ' + apk_name)
             return
 
         cmd = 'adb devices'
         os.system(cmd)
-        self.logger.info(apk_modified)
+        logger.info(apk_modified)
 
         # current_time = time.strftime(ISOTIMEFORMAT, time.localtime())
         par_dir = os.path.basename(os.path.abspath(os.path.join(apk, os.pardir)))  # the parent folder of the apk
@@ -589,22 +584,22 @@ class UIExerciser:
         package = self.get_package_name(self.aapt_loc, apk_modified)
 
         if not package:
-            self.logger.error('Not a valid pkg.')
+            logger.error('Not a valid pkg.')
             return
 
-        csvpath = self.get_csv_path(self.trigger_java_dir, par_dir, apk_name)
+        csvpath = self.get_csv_path(trigger_java_dir, par_dir, apk_name)
         if not os.path.isfile(csvpath):
-            self.logger.error('tgt_Act.csv does not exist:' + csvpath)
+            logger.error('tgt_Act.csv does not exist:' + csvpath)
             return
 
         output_dir = self.out_base_dir + par_dir + '/' + apk_name + '/'
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        filehandler = Utilities.set_file_log(self.logger, output_dir + 'COSMOS_TRIGGER_PY.log')
-        self.logger.info('apk:' + apk_modified)
-        self.logger.info('pkg:' + package)
-        self.logger.info('csv: ' + csvpath)
+        file_handler = set_file_log(logger, output_dir + 'COSMOS_TRIGGER_PY.log')
+        logger.info('apk:' + apk_modified)
+        logger.info('pkg:' + package)
+        logger.info('csv: ' + csvpath)
 
         UIExerciser.uninstall_pkg(series, package)
         UIExerciser.install_apk(series, apk_modified)
@@ -619,10 +614,10 @@ class UIExerciser:
                     UIExerciser.emu_proc = UIExerciser.open_emu(UIExerciser.emu_loc, UIExerciser.emu_name)
                 else:
                     raise Exception('Cannot start the default Activity')
-            if Utilities.run_method(self.screenshot, 180, args=[output_dir, '', True, package]):
+            if run_method(self.screenshot, 180, args=[output_dir, '', True, package]):
                 break
             else:
-                self.logger.warn("Time out while dumping XML for the default activity")
+                logger.warn("Time out while dumping XML for the default activity")
 
         # UIExerciser.adb_kill('logcat')
         # Utilities.adb_kill('tcpdump')
@@ -639,6 +634,6 @@ class UIExerciser:
 
         self.uninstall_pkg(series, package)
 
-        filehandler.close()
-        self.logger.removeHandler(filehandler)
-        Utilities.kill_by_name('adb.exe')
+        file_handler.close()
+        self.logger.removeHandler(file_handler)
+        kill_by_name('adb.exe')

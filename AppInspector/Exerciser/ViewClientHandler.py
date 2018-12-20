@@ -5,7 +5,7 @@ import xml.etree.cElementTree as ET
 import sys
 from xml.dom.minidom import parseString
 from uiautomator import Device
-from utils import Utilities
+from utils import set_logger
 
 HELP = 'help'
 VERBOSE = 'verbose'
@@ -44,9 +44,10 @@ MAP = {
     'D': ViewClient.TRAVERSE_S, DO_NOT_DUMP_VIEWS: ViewClient.TRAVERSE_S
 }
 
+logger = set_logger('ViewClientHandler')
+
 
 class ViewClientHandler:
-    logger = Utilities.set_logger('ViewClientHandler')
 
     @staticmethod
     def traverse(vc, root="ROOT", indent="", transform=None, stream=sys.stdout, bounds2id={}):
@@ -73,7 +74,7 @@ class ViewClientHandler:
         if type(root) == types.StringType and root == "ROOT":
             root = vc.root
 
-        print vc.list()
+        logger.info(vc.list())
         xml_root = ET.Element('hierarchy')
         ViewClientHandler.__traverse(root, indent, transform, stream, bounds2id=bounds2id)
         return bounds2id
@@ -97,7 +98,7 @@ class ViewClientHandler:
         sub_node = None
         if stream and s:
             ius = "%s%s" % (indent, s if isinstance(s, unicode) else unicode(s, 'utf-8', 'replace'))
-            print >> stream, ius.encode('utf-8', 'replace')
+            # logger.info(stream, ius.encode('utf-8', 'replace')
 
             bounds = str(root.getBounds()).replace('((', '[')
             bounds = bounds.replace('))', ']')
@@ -115,35 +116,32 @@ class ViewClientHandler:
     @staticmethod
     def dump_view_server(package):
         kwargs1 = {VERBOSE: False, 'ignoresecuredevice': False, 'ignoreversioncheck': False}
-        kwargs2 = {ViewClientOptions.FORCE_VIEW_SERVER_USE: False, ViewClientOptions.START_VIEW_SERVER: True,
+        kwargs2 = {ViewClientOptions.FORCE_VIEW_SERVER_USE: True, ViewClientOptions.START_VIEW_SERVER: True,
                    ViewClientOptions.AUTO_DUMP: False, ViewClientOptions.IGNORE_UIAUTOMATOR_KILLED: True,
-                   ViewClientOptions.COMPRESSED_DUMP: True,
-                   ViewClientOptions.USE_UIAUTOMATOR_HELPER: False,
-                   ViewClientOptions.DEBUG: {},
-                   }
-        kwargs2[ViewClientOptions.FORCE_VIEW_SERVER_USE] = True
+                   ViewClientOptions.COMPRESSED_DUMP: True, ViewClientOptions.USE_UIAUTOMATOR_HELPER: False,
+                   ViewClientOptions.DEBUG: {}}
         vc = ViewClient(*ViewClient.connectToDeviceOrExit(**kwargs1), **kwargs2)
         options = {WINDOW: -1, SAVE_SCREENSHOT: None, SAVE_VIEW_SCREENSHOTS: None, DO_NOT_DUMP_VIEWS: False,
                    DEVICE_ART: None, DROP_SHADOW: False, SCREEN_GLARE: False}
         windows = vc.list()
-        print windows
+        logger.info(windows)
         transform = MAP['b']
         for window in windows:
             if package not in windows[window]:
                 continue
-            print windows[window]
+            logger.info(windows[window])
             vc.dump(window=int(window))
             # ViewClient.imageDirectory = options[SAVE_VIEW_SCREENSHOTS]
             return ViewClientHandler.traverse(vc, transform=transform)
 
     @staticmethod
     def fill_ids(xml_data, package):
-        '''
+        """
         Fill the missing ids caused by uiautomator with low API level (<18)
         :param xml_data:
         :param package:
         :return:
-        '''
+        """
         dom = parseString(xml_data.encode("utf-8"))
         nodes = dom.getElementsByTagName('node')
         for node in nodes:
@@ -152,23 +150,18 @@ class ViewClientHandler:
             else:
                 break
         bounds2ids = ViewClientHandler.dump_view_server(package)
-        if bounds2ids == None:
-            ViewClientHandler.logger.error('Cannot identify the package!')
+        if bounds2ids is None:
+            logger.error('Cannot identify the package!')
             return xml_data
-        ViewClientHandler.logger.info(str(bounds2ids))
+        logger.info(str(bounds2ids))
         for node in nodes:
             if node.getAttribute('bounds') in bounds2ids:
                 node.setAttribute('resource-id', bounds2ids[node.getAttribute('bounds')])
             else:
-                ViewClientHandler.logger.warn('Cannot find ' + node.getAttribute('bounds'))
+                logger.warn('Cannot find ' + node.getAttribute('bounds'))
         return dom.toxml()
 
 
 if __name__ == '__main__':
     dev = Device()
-    print ViewClientHandler.fill_ids(dev.dump(), 'com.kuaihuoyun.driver')
-
-
-
-
-
+    logger.info(ViewClientHandler.fill_ids(dev.dump(), 'com.kuaihuoyun.driver'))

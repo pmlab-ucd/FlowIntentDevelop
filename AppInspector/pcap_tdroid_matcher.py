@@ -9,9 +9,9 @@ import json
 from shutil import copytree, rmtree
 from xml.dom.minidom import parseString
 from pcap_processor import *
-from utils import Utilities
+from utils import set_logger
 
-logger = Utilities.set_logger('TaintDroidLogProcessor')
+logger = set_logger('TaintDroidLogProcessor')
 
 
 def gen_tag(src):

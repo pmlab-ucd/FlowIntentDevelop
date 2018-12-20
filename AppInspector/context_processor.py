@@ -4,12 +4,12 @@ import os
 from learner import Learner
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from utils import Utilities
+from utils import set_logger
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression
 import sys
 
-logger = Utilities.set_logger('ContextProcessor')
+logger = set_logger('ContextProcessor')
 
 
 class ContextProcessor:

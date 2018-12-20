@@ -1,5 +1,5 @@
-from AppInspector.Exerciser.UIExerciser import UIExerciser
-from utils import Utilities
+from AppInspector.Exerciser.ui_exerciser import UIExerciser
+from utils import current_time, set_logger, set_file_log, run_method, kill_by_name
 import time
 import os
 # from subprocess import STDOUT, Popen, PIPE
@@ -10,7 +10,7 @@ import sys
 
 
 class FlowIntentExerciser(UIExerciser):
-    logger = Utilities.set_logger('FlowIntentExerciser')
+    logger = set_logger('FlowIntentExerciser')
 
     def flowintent_first_page(self, series, apk, examined):
         """
@@ -20,7 +20,7 @@ class FlowIntentExerciser(UIExerciser):
         :param examined:
         :return:
         """
-        current_time = Utilities.current_time()
+        cur_time = current_time()
         self.logger.info('base name: ' + os.path.basename(apk))
         apk_name, apk_extension = os.path.splitext(apk)
 
@@ -50,7 +50,7 @@ class FlowIntentExerciser(UIExerciser):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        file_handler = Utilities.set_file_log(self.logger, output_dir + 'FlowIntent_FP_PY.log')
+        file_handler = set_file_log(self.logger, output_dir + 'FlowIntent_FP_PY.log')
         self.logger.info('apk:' + apk)
         self.logger.info('pkg:' + package)
 
@@ -72,7 +72,7 @@ class FlowIntentExerciser(UIExerciser):
         # cmd = 'adb -s ' + series + ' shell "nohup /data/local/tcpdump -w /sdcard/' + package + current_time + '.pcap &"'
         # self.logger.info('tcpdump begins')
         # cmd = 'adb -s ' + series + ' shell /data/local/tcpdump -w /sdcard/' + package + '_' + current_time + '.pcap'
-        UIExerciser.tcpdump_begin(package, current_time, nohup=False)
+        UIExerciser.tcpdump_begin(package, cur_time, nohup=False)
         # os.system(cmd)
         # self.logger.info(cmd)
         # process = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
@@ -85,7 +85,7 @@ class FlowIntentExerciser(UIExerciser):
                     UIExerciser.emu_proc = UIExerciser.open_emu(UIExerciser.emu_loc, UIExerciser.emu_name)
                 else:
                     raise Exception('Cannot start the default Activity')
-            if Utilities.run_method(self.screenshot, 180, args=[output_dir, '', True, package]):
+            if run_method(self.screenshot, 180, args=[output_dir, '', True, package]):
                 break
             else:
                 self.logger.warn("Time out while dumping XML for the default activity")
@@ -96,21 +96,21 @@ class FlowIntentExerciser(UIExerciser):
         # os.system("TASKKILL /F /PID {pid} /T".format(pid=process.pid))
         time.sleep(60)
         # process.kill()  # takes more time
-        out_pcap = output_dir + package + current_time + '.pcap'
+        out_pcap = output_dir + package + cur_time + '.pcap'
         while not os.path.exists(out_pcap) or os.stat(out_pcap).st_size < 2:
             time.sleep(5)
-            UIExerciser.tcpdump_end(output_dir, package, current_time)
+            UIExerciser.tcpdump_end(output_dir, package, cur_time)
             if not os.path.exists(out_pcap):
                 self.logger.warning('The pcap does not exist.')
                 # raise Exception('The pcap does not exist.')
             else:
-                UIExerciser.run_adb_cmd('shell rm /sdcard/' + package + current_time + '.pcap')
+                UIExerciser.run_adb_cmd('shell rm /sdcard/' + package + cur_time + '.pcap')
 
         # UIExerciser.run_adb_cmd('pull /sdcard/' + package + current_time + '.log ' + output_dir)
         # UIExerciser.run_adb_cmd('shell rm /sdcard/' + package + current_time + '.log')
         taint_logs = []
-        Utilities.run_method(TaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
-        with open(output_dir + package + '_' + current_time + '.json', 'w') as outfile:
+        run_method(TaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
+        with open(output_dir + package + '_' + cur_time + '.json', 'w') as outfile:
             json.dump(taint_logs, outfile)
 
         self.uninstall_pkg(series, package)
@@ -118,7 +118,7 @@ class FlowIntentExerciser(UIExerciser):
 
         file_handler.close()
         self.logger.removeHandler(file_handler)
-        Utilities.kill_by_name('adb.exe')
+        kill_by_name('adb.exe')
 
 
 if __name__ == '__main__':

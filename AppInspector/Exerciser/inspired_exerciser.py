@@ -1,12 +1,11 @@
-from ui_exerciser import UIExerciser
-from utils import Utilities
+from AppInspector.Exerciser.ui_exerciser import UIExerciser
+from utils import set_logger
 import re
 import os
 import time
 
 if __name__ == '__main__':
-    ISOTIMEFORMAT = '%m%d-%H-%M-%S'
-    logger = Utilities.set_logger('COSMOS_TRIGGER_PY-Console')
+    logger = set_logger('COSMOS_TRIGGER_PY-Console')
 
     device = 'nexus4'
     pc = 'iai'
@@ -53,6 +52,7 @@ if __name__ == '__main__':
                                                    'C:\\Users\\hfu\\Documents\\COSMOS\\output\\java\\')
                         break
                     except Exception as e:
+                        logger.warn(str(e))
                         if device == 'xiaoyao':
                             if not UIExerciser.run_adb_cmd('connect 127.0.0.1:21503'):
                                 exit(1)

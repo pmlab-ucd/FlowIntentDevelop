@@ -1,12 +1,12 @@
 from AppInspector.Exerciser.AsynchronousFileReader import AsynchronousFileReader
-from utils import Utilities
+from utils import adb_id2process
 import subprocess
 import queue
 import re
 
-'''
+"""
 Extract the TaintDroid output while executing the given apps.
-'''
+"""
 
 
 class TaintDroidLogHandler:
@@ -22,7 +22,7 @@ class TaintDroidLogHandler:
             return
         taint_log = {'log_time': line.split(' W')[0], 'process_id': line.split('):')[0].split('(')[1].replace(' ', '')}
 
-        taint_log['process_name'] = Utilities.adb_id2process(taint_log['process_id']).replace('\r', '')
+        taint_log['process_name'] = adb_id2process(taint_log['process_id']).replace('\r', '')
         message = line.split(': ')[1]
         taint_log['message'] = message
         taint_log['dst'] = TaintDroidLogHandler.get_dst(message)

@@ -65,7 +65,7 @@ class Utilities:
     def kill(proc_pid):
         process = psutil.Process(proc_pid)
         for proc in process.children(recursive=True):
-            proc.kill()
+            kill()
         process.kill()
 
     @staticmethod
@@ -73,7 +73,7 @@ class Utilities:
         parent = psutil.Process(pid)
         children = parent.children(recursive=True)
         for child in children:
-            child.kill()
+            kill()
         psutil.wait_procs(children, timeout=5)
         if including_parent:
             parent.kill()
@@ -143,4 +143,4 @@ class Utilities:
         for proc in psutil.process_iter():
             # check whether the process name matches
             if proc.name() == name:
-                proc.kill()
+                kill()

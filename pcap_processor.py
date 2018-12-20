@@ -7,9 +7,9 @@ import datetime
 import socket
 from dpkt.compat import compat_ord
 
-from utils import Utilities
+from utils import set_logger
 
-logger = Utilities.set_logger('pcap_processor')
+logger = set_logger('pcap_processor')
 
 # import win_inet_pton
 

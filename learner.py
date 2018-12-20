@@ -16,7 +16,7 @@ from sklearn import metrics
 from sklearn.model_selection import StratifiedKFold
 from sklearn.feature_extraction.text import TfidfVectorizer
 import json
-from utils import Utilities
+from utils import set_logger
 
 import string
 import random
@@ -30,6 +30,7 @@ import jieba
 import os
 
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
+logger = set_logger('Learner')
 
 
 class StemmedCountVectorizer(CountVectorizer):
@@ -45,7 +46,7 @@ class StemmedTfidfVectorizer(TfidfVectorizer):
 
 
 class Learner:
-    logger = Utilities.set_logger('Learner')
+    logger = set_logger('Learner')
     logger.setLevel(level=20)
 
     class LabelledDocs:
@@ -546,16 +547,16 @@ class Learner:
         jieba.load_userdict('user.dict')
         string = re.sub('°', 'DegreeMark', string)
         if Learner.chinese(string):
-            # print('Chinese Detected!')
+            logger.debug('Chinese Detected!')
             # string = re.sub(u'[^\u4e00-\u9fa5]', '', string)
             words = jieba.cut(string, cut_all=False)
             # words = [w for w in words if not w in stopwords.words("chinese")]
         else:
-            # print 'English Detected!'
+            logger.debug('English Detected!')
             string = re.sub('[^a-zA-Z]', ' ', string)  # if English only
             words = string.lower().split()
             # words = [w for w in words if not w in stopwords.words("english")]
-            # print words
+            logger.debug(words)
 
         # print('/'.join(words)) #  do not use print if you want to return
         word_list = []
@@ -678,4 +679,4 @@ class Learner:
 
 
 if __name__ == '__main__':
-    logger = Utilities.set_logger('Learner')
+    logger.setLevel(20)

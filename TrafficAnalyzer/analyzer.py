@@ -2,9 +2,9 @@ import json
 
 from learner import Learner
 from pcap_processor import *
-from utils import Utilities
+from utils import set_logger
 
-logger = Utilities.set_logger('Analyzer')
+logger = set_logger('Analyzer')
 
 
 class Analyzer:
