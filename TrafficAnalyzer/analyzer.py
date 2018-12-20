@@ -3,6 +3,7 @@ import json
 from learner import Learner
 from pcap_processor import *
 from utils import set_logger
+import shutil
 
 logger = set_logger('Analyzer')
 
@@ -68,6 +69,9 @@ class Analyzer:
         out_dir = os.path.join(out_base_dir, label)
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
+        else:
+            shutil.rmtree(out_base_dir)
+            os.makedirs(out_dir)
 
         for flow in filtered:
             timestamp = flow['timestamp'].replace(':', '-')
@@ -106,10 +110,7 @@ if __name__ == '__main__':
     logger.setLevel(10)
     neg_pcap_dir = sys.argv[1]
     logger.info('The negative pcap stored at: ', neg_pcap_dir)
-
-    preprocessed = False
-    if not preprocessed:
-        preprocess(neg_pcap_dir)
+    preprocess(neg_pcap_dir)
 
     instances, y = Learner.gen_instances(os.path.join('data', '1'),
                                          os.path.join('data', '0'), char_wb=False, simulate=False)

@@ -8,6 +8,7 @@ from utils import set_logger
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression
 import sys
+import shutil
 
 logger = set_logger('ContextProcessor')
 
@@ -36,23 +37,26 @@ class ContextProcessor:
         return docs, np.array(labels)
 
     @staticmethod
-    def process(root_dir, pos_dir_name='1', neg_dir_name='0'):
+    def process(root_dir, pos_dir_name='1', neg_dir_name='0', reset_out_dir=False):
         """
         Given the dataset of legal and illegal sharing instances
         Perform cross-validation on them
         :param root_dir:
         :param pos_dir_name:
         :param neg_dir_name:
+        :param reset_out_dir:
         """
-        # Read the sharing instances stored in the hard disk and convert them into SharingInstances
+        # Load the contexts stored in the hard disk.
         # instances_dir_name = hashlib.md5(root_dir.encode('utf-8')).hexdigest()
         # Output dir
-        instances_dir_path = os.path.join('data', os.path.basename(root_dir))
+        contexts_dir = os.path.join('data', os.path.basename(root_dir))
         pos_dir = os.path.join(root_dir, pos_dir_name)
-        pos_out_dir = os.path.join(instances_dir_path, pos_dir_name)
+        pos_out_dir = os.path.join(contexts_dir, pos_dir_name)
         neg_dir = os.path.join(root_dir, neg_dir_name)
-        neg_out_dir = os.path.join(instances_dir_path, neg_dir_name)
-        if not os.path.exists(instances_dir_path):
+        neg_out_dir = os.path.join(contexts_dir, neg_dir_name)
+        if reset_out_dir:
+            shutil.rmtree(contexts_dir)
+        if not os.path.exists(contexts_dir):
             os.makedirs(pos_out_dir)
             instances = contexts(pos_dir)
             for instance in instances:
@@ -79,7 +83,7 @@ class ContextProcessor:
                                 instance = Object(instance)
                                 # ContextProcessor.logger.debug(instance.dir)
                                 instances.append(instance)
-            with open(os.path.join(instances_dir_path, 'instances.json'), 'w', encoding="utf8") as outfile:
+            with open(os.path.join(contexts_dir, 'instances.json'), 'w', encoding="utf8") as outfile:
                 json.dump(instances_dict, outfile)
                 # pd.Series(instances).to_json(outfile, orient='values')
         # Convert the SharingInstances into the <String, label> pairs
@@ -126,7 +130,7 @@ class ContextProcessor:
                     logger.debug('FP:' + str(instances[fp].ui_doc) + "," + instances[fp].topic)
                 for fn in fold['fn_item']:
                     logger.debug('FN:' + str(instances[fn].ui_doc) + "," + instances[fn].topic)
-        with open(os.path.join(instances_dir_path, 'folds.json'), 'w') as json_file:
+        with open(os.path.join(contexts_dir, 'folds.json'), 'w') as json_file:
             for fold in folds:
                 fold['train_index'] = fold['train_index'].tolist()
                 fold['test_index'] = fold['test_index'].tolist()
@@ -143,8 +147,11 @@ class ContextProcessor:
 
 
 if __name__ == '__main__':
-    root_dir = sys.argv[1]
+    root_dir = sys.argv[len(sys.argv) - 1]
+    reset = False
+    if len(sys.argv) > 1:
+        reset = True if '-r' in sys.argv else False
     logger.setLevel(10)
     logger.info('The data stored at: ', root_dir)
     Learner.logger.setLevel(20)
-    ContextProcessor.process(root_dir)
+    ContextProcessor.process(root_dir, reset_out_dir=reset)
