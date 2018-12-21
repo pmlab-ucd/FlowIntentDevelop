@@ -157,8 +157,8 @@ def clean_folder(work_dir: str, tsrc: str = 'Location') -> None:
             if str(fn).endswith('xml'):
                 # Clean the xml (and other relevant data) whose content does not contain any app UI.
                 xml_path = os.path.join(root, fn)
-                with open(xml_path, 'rb') as f:
-                    try:
+                try:
+                    with open(xml_path, 'rb') as f:
                         others = []
                         android = False
                         data = f.read()
@@ -174,7 +174,7 @@ def clean_folder(work_dir: str, tsrc: str = 'Location') -> None:
                                 others.append(node.getAttribute('package'))
                         if android and len(others) == 0:
                             rm_instance_meta(root, fn)
-                    except Exception as e:
+                except Exception as e:
                         logger.warn('Error while handling ' + xml_path + ", " + str(e))
 
 
@@ -336,10 +336,7 @@ def match_flow(pcap_txt, ip, data, time, dirname, pcap, ips, urls, domains, ip_d
     :param ip_domain:
     :return:
     """
-    data = data.replace('?', '\?')
-    data = data.replace('(', '\(')
-    data = data.replace(')', '\)')
-    data = data.replace('[', '\[')
+    data = data.replace('?', '\\?').replace('(', '\\(').replace(')', '\\)').replace('[', '\\[')
     try:
         pcap_txt = open(pcap_txt, 'r')
     except IOError:
