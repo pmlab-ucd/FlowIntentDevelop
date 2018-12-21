@@ -3,7 +3,7 @@ from utils import current_time, set_logger, set_file_log, run_method, kill_by_na
 import time
 import os
 # from subprocess import STDOUT, Popen, PIPE
-from AppInspector.Exerciser.taint_droid_log_collector import TaintDroidLogHandler
+from AppInspector.Exerciser.online_tdroid_log_collector import OnlineTaintDroidLogHandler
 import json
 from uiautomator import Device
 import sys
@@ -109,7 +109,7 @@ class FlowIntentExerciser(UIExerciser):
         # UIExerciser.run_adb_cmd('pull /sdcard/' + package + current_time + '.log ' + output_dir)
         # UIExerciser.run_adb_cmd('shell rm /sdcard/' + package + current_time + '.log')
         taint_logs = []
-        run_method(TaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
+        run_method(OnlineTaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
         with open(output_dir + package + '_' + cur_time + '.json', 'w') as outfile:
             json.dump(taint_logs, outfile)
 

@@ -13,7 +13,7 @@ import psutil
 import json
 from AppInspector.Exerciser.sign_apks import sign_apk
 from AppInspector.Exerciser.ViewClientHandler import ViewClientHandler
-from AppInspector.Exerciser.taint_droid_log_collector import TaintDroidLogHandler
+from AppInspector.Exerciser.online_tdroid_log_collector import OnlineTaintDroidLogHandler
 
 logger = set_logger('UIExerciser')
 
@@ -258,7 +258,7 @@ class UIExerciser:
                         UIExerciser.run_adb_cmd('shell rm /sdcard/' + package + cur_time + '.pcap')
 
                     taint_logs = []
-                    run_method(TaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
+                    run_method(OnlineTaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
                     with open(output_dir + activity + '.json', 'w') as outfile:
                         json.dump(taint_logs, outfile)
             else:
@@ -543,7 +543,7 @@ class UIExerciser:
         # UIExerciser.run_adb_cmd('pull /sdcard/' + package + current_time + '.log ' + output_dir)
         # UIExerciser.run_adb_cmd('shell rm /sdcard/' + package + current_time + '.log')
         taint_logs = []
-        run_method(TaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
+        run_method(OnlineTaintDroidLogHandler.collect_taint_log, 15, args=[taint_logs])
         with open(output_dir + package + '_' + cur_time + '.json', 'w') as outfile:
             json.dump(taint_logs, outfile)
 

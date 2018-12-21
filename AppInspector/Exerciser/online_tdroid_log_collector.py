@@ -1,5 +1,5 @@
 from AppInspector.Exerciser.AsynchronousFileReader import AsynchronousFileReader
-from utils import adb_id2process
+from utils import adb_id2process, set_logger
 import subprocess
 import queue
 import re
@@ -8,8 +8,10 @@ import re
 Extract the TaintDroid output while executing the given apps.
 """
 
+logger = set_logger('OnlineTaintDroidLogHandler')
 
-class TaintDroidLogHandler:
+
+class OnlineTaintDroidLogHandler:
     @staticmethod
     def parse_taint_log(line):
         """
@@ -25,13 +27,13 @@ class TaintDroidLogHandler:
         taint_log['process_name'] = adb_id2process(taint_log['process_id']).replace('\r', '')
         message = line.split(': ')[1]
         taint_log['message'] = message
-        taint_log['dst'] = TaintDroidLogHandler.get_dst(message)
-        taint_log['src'] = TaintDroidLogHandler.get_taint_src(message)
-        if TaintDroidLogHandler.is_tainted_send(message):
+        taint_log['dst'] = OnlineTaintDroidLogHandler.get_dst(message)
+        taint_log['src'] = OnlineTaintDroidLogHandler.get_taint_src(message)
+        if OnlineTaintDroidLogHandler.is_tainted_send(message):
             taint_log['channel'] = 'HTTP'
-        elif TaintDroidLogHandler.is_tainted_ssl_send(message):
+        elif OnlineTaintDroidLogHandler.is_tainted_ssl_send(message):
             taint_log['channel'] = 'HTTPS'
-        elif TaintDroidLogHandler.is_tainted_sms(message):
+        elif OnlineTaintDroidLogHandler.is_tainted_sms(message):
             taint_log['channel'] = 'SMS'
         else:
             taint_log['channel'] = 'INTERNAL'
@@ -51,7 +53,7 @@ class TaintDroidLogHandler:
 
     @staticmethod
     def get_dst(msg):
-        pattern = re.compile('\((.*)\)')
+        pattern = re.compile('\\((.*)\\)')
         content = pattern.findall(msg)
         if len(content) > 0:
             return content[0]
@@ -119,9 +121,9 @@ class TaintDroidLogHandler:
             while still_looking and not stdout_reader.eof():
                 while not stdout_queue.empty():
                     line = stdout_queue.get().split('\n')[0]
-                    print(count, line)
-                    taint_log = TaintDroidLogHandler.parse_taint_log(line)
-                    print(taint_log)
+                    logger.info(count, line)
+                    taint_log = OnlineTaintDroidLogHandler.parse_taint_log(line)
+                    logger.info(taint_log)
                     if taint_log is not None:
                         taint_logs.append(taint_log)
                     count += 1
@@ -133,4 +135,4 @@ class TaintDroidLogHandler:
 
 
 if __name__ == '__main__':
-    print(TaintDroidLogHandler.collect_taint_log())
+    logger.info(OnlineTaintDroidLogHandler.collect_taint_log())
