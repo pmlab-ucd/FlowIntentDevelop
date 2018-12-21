@@ -45,10 +45,9 @@ class StemmedTfidfVectorizer(TfidfVectorizer):
         return lambda doc: ([PorterStemmer().stem(w) for w in analyzer(doc)])
 
 
-class Learner:
-    logger = set_logger('Learner')
-    logger.setLevel(level=20)
+logger = set_logger('Learner')
 
+class Learner:
     class LabelledDocs:
         @staticmethod
         def stem_tokens(tokens, stemmer):
@@ -104,16 +103,16 @@ class Learner:
     def feature_filter_by_prefix(vocab, docs):
         examined = []
         for i in range(len(vocab)):
-            Learner.logger.info('i: ' + vocab[i] + ' ' + str(i))
+            logger.info('i: ' + vocab[i] + ' ' + str(i))
             if len(vocab[i]) < 6 or vocab[i] in examined:
                 continue
             for j in range(i + 1, len(vocab)):
-                # Learner.logger.info('j: ' + vocab[j] + ' ' + str(j))
+                # logger.info('j: ' + vocab[j] + ' ' + str(j))
                 if len(vocab[j]) < 6:
                     examined.append(vocab[j])
                     continue
                 if vocab[i] in vocab[j] or vocab[j] in vocab[i]:  # Learner.same_prefix(vocab[i], vocab[j]):
-                    # Learner.logger.info('Found ' + vocab[i] + ' ' + vocab[j] + ' ' + str(i))
+                    # logger.info('Found ' + vocab[i] + ' ' + vocab[j] + ' ' + str(i))
                     examined.append(vocab[j])
                     for doc in docs:
                         if vocab[j] in doc.doc:
@@ -132,15 +131,15 @@ class Learner:
         # Numpy arrays are easy to work with, so convert the result to an
         # array
         # train_data = train_data.toarray()
-        Learner.logger.info(train_data.shape)
+        logger.info(train_data.shape)
         return train_data, labels
 
     @staticmethod
     def gen_instances(pos_json_dir, neg_json_dir, simulate=False, char_wb=False):
         pos_jsons = Learner.dir2jsons(pos_json_dir)
         neg_jsons = Learner.dir2jsons(neg_json_dir)
-        Learner.logger.info('lenPos: ' + str(len(pos_jsons)))
-        Learner.logger.info('lenNeg: ' + str(len(neg_jsons)))
+        logger.info('lenPos: ' + str(len(pos_jsons)))
+        logger.info('lenNeg: ' + str(len(neg_jsons)))
         docs = Learner.gen_docs(pos_jsons, 1, char_wb)
         docs = docs + (Learner.gen_docs(neg_jsons, -1, char_wb))
         if simulate:
@@ -197,10 +196,10 @@ class Learner:
         # Numpy arrays are easy to work with, so convert the result to an
         # array
         # train_data = train_data.toarray()
-        Learner.logger.info(train_data.shape)
+        logger.info(train_data.shape)
         # Take a look at the words in the vocabulary
         vocab = vectorizer.get_feature_names()
-        # Learner.logger.info(vocab)
+        # logger.info(vocab)
         # train_data, labels = Learner.feature_filter_by_prefix(vocab, docs)
 
         return train_data, vocab, vectorizer
@@ -214,9 +213,9 @@ class Learner:
             results = Learner.cross_validation(clf, train_data, labels)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
-            Learner.logger.info('OCSVM: ' + str(results['duration']))
-            Learner.logger.info('mean scores:' + str(results['mean_scores']))
-            Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
+            logger.info('OCSVM: ' + str(results['duration']))
+            logger.info('mean scores:' + str(results['mean_scores']))
+            logger.info('mean_conf:' + str(results['mean_conf_mat']))
 
         clf.fit(train_data)
 
@@ -230,9 +229,9 @@ class Learner:
             results = Learner.cross_validation(clf, train_data, labels, n_fold=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
-            Learner.logger.info('Bayes: ' + str(results['duration']))
-            Learner.logger.info('mean scores:' + str(results['mean_scores']))
-            Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
+            logger.info('Bayes: ' + str(results['duration']))
+            logger.info('mean scores:' + str(results['mean_scores']))
+            logger.info('mean_conf:' + str(results['mean_conf_mat']))
 
         # Fit the forest to the training set, using the bag of words as
         # features and the sentiment labels as the response variable
@@ -351,9 +350,9 @@ class Learner:
         # print "\nMean classification measures: \n"
         results['mean_conf_mat'] = Learner.class_report(conf_mat)
         # return scores, conf_mat, {'fp': sorted(false_pos), 'fn': sorted(false_neg)}
-        Learner.logger.info(str(clf) + ': ' + str(results['duration']))
-        Learner.logger.info('mean scores:' + str(results['mean_scores']))
-        Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
+        logger.info(str(clf) + ': ' + str(results['duration']))
+        logger.info('mean scores:' + str(results['mean_scores']))
+        logger.info('mean_conf:' + str(results['mean_conf_mat']))
         return results
 
     @staticmethod
@@ -364,9 +363,9 @@ class Learner:
             results = Learner.cross_validation(clf, train_data, labels, fold=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
-            Learner.logger.info('SVM: ' + str(results['duration']))
-            Learner.logger.info('mean scores:' + str(results['mean_scores']))
-            Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
+            logger.info('SVM: ' + str(results['duration']))
+            logger.info('mean scores:' + str(results['mean_scores']))
+            logger.info('mean_conf:' + str(results['mean_conf_mat']))
 
         # Fit the forest to the training set, using the bag of words as
         # features and the sentiment labels as the response variable
@@ -384,9 +383,9 @@ class Learner:
             results = Learner.cross_validation(clf, train_data, labels, fold=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
-            Learner.logger.info('Logistic: ' + str(results['duration']))
-            Learner.logger.info('mean scores:' + str(results['mean_scores']))
-            Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
+            logger.info('Logistic: ' + str(results['duration']))
+            logger.info('mean scores:' + str(results['mean_scores']))
+            logger.info('mean_conf:' + str(results['mean_conf_mat']))
 
         # Fit the forest to the training set, using the bag of words as
         # features and the sentiment labels as the response variable
@@ -406,9 +405,9 @@ class Learner:
             results = Learner.cross_validation(clf, train_data, labels, folds=folds)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
-            Learner.logger.info('Tree: ' + str(results['duration']))
-            Learner.logger.info('mean scores:' + str(results['mean_scores']))
-            Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
+            logger.info('Tree: ' + str(results['duration']))
+            logger.info('mean scores:' + str(results['mean_scores']))
+            logger.info('mean_conf:' + str(results['mean_conf_mat']))
 
         # Fit the forest to the training set, using the bag of words as
         # features and the sentiment labels as the response variable
@@ -462,7 +461,7 @@ class Learner:
         depth = clf.tree_.max_depth
         info['n_nodes'] = n_nodes
         info['depth'] = depth
-        Learner.logger.info(info)
+        logger.info(info)
         return info
 
     @staticmethod
@@ -476,7 +475,7 @@ class Learner:
             try:
                 docs.append(Learner.LabelledDocs(line, label, char_wb=char_wb))
             except Exception as e:
-                Learner.logger.warn(str(e) + ':' + str(line))
+                logger.warn(str(e) + ':' + str(line))
         return docs
 
     @staticmethod
@@ -485,7 +484,7 @@ class Learner:
         data = vec.transform(instances)
         y_1 = model.predict(data)
 
-        # Learner.logger.info(y_1)
+        # logger.info(y_1)
         if labels is not None:
             return accuracy_score(labels, y_1)
 
@@ -585,7 +584,7 @@ class Learner:
         for clf in clfs:
             clf_name = type(clf).__name__
             results[clf_name] = []
-            Learner.logger.debug(clf_name + ': ')
+            logger.debug(clf_name + ': ')
             for fold in folds:
                 result = dict()
                 train_index = fold['train_index']
@@ -598,7 +597,7 @@ class Learner:
                 # Make the predictions
                 predicted = clf.predict(X_test)
                 y_plabs = np.squeeze(predicted)
-                result['predicted_0'] = test_index[np.where(y_plabs == 0)[0]]
+                result['predicted_1'] = test_index[np.where(y_plabs == 1)[0]]
                 if hasattr(clf, 'predict_proba'):
                     y_pprobs = clf.predict_proba(X_test)  # Predicted probability
                     result['roc'] = metrics.roc_auc_score(y_test, y_pprobs[:, 1])
@@ -629,11 +628,11 @@ class Learner:
                     result['fp_item'] = test_index[fp_i]
                     result['fn_item'] = test_index[fn_i]
                 results[clf_name].append(result)
-                Learner.logger.debug('fold: ')
+                logger.debug('fold: ')
                 fps = result['fp_item']
-                Learner.logger.debug("FP:" + str(fps))
+                logger.debug("FP:" + str(fps))
                 fns = result['fn_item']
-                Learner.logger.debug("FN:" + str(fns))
+                logger.debug("FN:" + str(fns))
             # cv_res = cross_val_score(clf, data, labels, cv=cv, scoring='f1').tolist()
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
@@ -651,30 +650,30 @@ class Learner:
             # print "\nMean classification measures: \n"
             results['mean_conf_mat'] = Learner.class_report(conf_mat)
             # return scores, conf_mat, {'fp': sorted(false_pos), 'fn': sorted(false_neg)}
-            Learner.logger.info(str(clf) + ': ' + str(results['duration']))
-            Learner.logger.info('mean scores:' + str(results['mean_scores']))
-            Learner.logger.info('mean_conf:' + str(results['mean_conf_mat']))
+            logger.info(str(clf) + ': ' + str(results['duration']))
+            logger.info('mean scores:' + str(results['mean_scores']))
+            logger.info('mean_conf:' + str(results['mean_conf_mat']))
 
         for i in range(0, len(folds)):
-            overlap_predicted_neg_i = set()
+            overlap_predicted_pos_i = set()
             for j in range(0, len(clfs)):
                 clf_name = type(clfs[j]).__name__
-                items = results[clf_name][i]['predicted_0']
-                # Learner.logger.info("num:" + str(len(items)))
+                items = results[clf_name][i]['predicted_1']
+                # logger.info("num:" + str(len(items)))
                 if j == 0:
                     for item in items:
-                        overlap_predicted_neg_i.add(int(item))
+                        overlap_predicted_pos_i.add(int(item))
                 else:
                     tmp = set()
                     for item in items:
                         tmp.add(int(item))
                     another_tmp = set()
-                    for item in overlap_predicted_neg_i:
+                    for item in overlap_predicted_pos_i:
                         if item in tmp:
                             another_tmp.add(item)
-                    overlap_predicted_neg_i = another_tmp
-            # Learner.logger.debug(len(overlap_predicted_neg_i))
-            folds[i]['vot_pred_neg'] = list(overlap_predicted_neg_i)
+                    overlap_predicted_pos_i = another_tmp
+            # logger.debug(len(overlap_predicted_neg_i))
+            folds[i]['vot_pred_pos'] = list(overlap_predicted_pos_i)
         return results
 
 

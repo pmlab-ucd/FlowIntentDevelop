@@ -180,13 +180,13 @@ def http_requests_helper(pcap, label='', filter_by_packet_info=None, filter_by_f
             # Print out the info
             timestamp = str(datetime.datetime.utcfromtimestamp(timestamp))
 
-            logger.debug('Timestamp: ', timestamp)
-            logger.debug('Ethernet Frame: ', mac_addr(eth.src), mac_addr(eth.dst), eth.type)
+            logger.debug('Timestamp: %s', timestamp)
+            logger.debug('Ethernet Frame: %s %s %s', mac_addr(eth.src), mac_addr(eth.dst), eth.type)
             logger.debug('IP: %s -> %s   (len=%d ttl=%d DF=%d MF=%d offset=%d)' %
                          (inet_to_str(packet.src), inet_to_str(packet.dst), packet.len, packet.ttl, do_not_fragment,
                           more_fragments, fragment_offset))
             logger.debug('HTTP request: %s\n' % repr(request))
-            logger.debug(tcp.sport + tcp.dport)
+            logger.debug(str(tcp.sport) + ' ' + str(tcp.dport))
             flow['label'] = label
             flow['post_body'] = request.body.decode("ISO-8859-1")
             try:
@@ -233,12 +233,13 @@ def http_requests(pcap_path, label='', filter_func=None, filter_flow=None, args=
     with open(pcap_path, 'rb') as f:
         try:
             pcap = dpkt.pcap.Reader(f)
+            # flows = print_http_requests(pcap, label, filter_func, args)
+            return http_requests_helper(pcap, label, filter_by_packet_info=filter_func,
+                                        filter_by_flow_info=filter_flow, args=args)
         except Exception as e:
+            logger.warn('Error in pcap path: %s', pcap_path)
             logger.warn(str(e))
             return None
-        # flows = print_http_requests(pcap, label, filter_func, args)
-        return http_requests_helper(pcap, label, filter_by_packet_info=filter_func,
-                                    filter_by_flow_info=filter_flow, args=args)
 
 
 def duration(pkts):
@@ -318,8 +319,8 @@ def filter_pcap_by_ip(dirname, pkts, ip):
     filtered = []
     for pkt in pkts:
         if TCP in pkt and (pkt[IP].dst == ip or pkt[IP].src == ip):
-                logger.debug('Found: ' + pkt[IP].dst)
-                filtered.append(pkt)
+            logger.debug('Found: ' + pkt[IP].dst)
+            filtered.append(pkt)
     wrpcap(output_path, filtered)
 
 

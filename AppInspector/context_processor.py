@@ -2,6 +2,7 @@ from AppInspector.context import Context, Object, contexts
 import json
 import os
 from learner import Learner
+import learner
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from utils import set_logger
@@ -9,6 +10,8 @@ from sklearn import svm
 from sklearn.linear_model import LogisticRegression
 import sys
 import shutil
+import pandas as pd
+import logging
 
 logger = set_logger('ContextProcessor')
 
@@ -81,18 +84,22 @@ class ContextProcessor:
                                 instance = json.load(my_file)
                                 instances_dict.append(instance)
                                 instance = Object(instance)
-                                # ContextProcessor.logger.debug(instance.dir)
+                                logger.debug(instance.dir)
                                 instances.append(instance)
-            with open(os.path.join(contexts_dir, 'instances.json'), 'w', encoding="utf8") as outfile:
+            with open(os.path.join(contexts_dir, 'contexts.json'), 'w', encoding="utf8") as outfile:
                 json.dump(instances_dict, outfile)
                 # pd.Series(instances).to_json(outfile, orient='values')
-        # Convert the SharingInstances into the <String, label> pairs
+        return instances, contexts_dir
+
+    @staticmethod
+    def train(instances, contexts_dir):
+        # Convert the instances into the <String, label> pairs.
         docs, y = ContextProcessor.docs(instances)
-        # Transform the strings into the np array
+        # Transform the strings into the np array.
         train_data, voc, vec = Learner.gen_X_matrix(docs)
         logger.info('neg: ' + str(len(np.where(y == 0)[0])))
         logger.info('pos: ' + str(len(np.where(y == 1)[0])))
-        # Split the data set into 10 folds
+        # Split the data set into 10 folds.
         folds = Learner.n_folds(train_data, y, fold=10)  # [Fold(f) for f in Learner.n_folds(train_data, y, fold=10)]
         """
         # Perform the init classification and check the misclassified instances
@@ -115,7 +122,7 @@ class ContextProcessor:
         clf = LogisticRegression(class_weight='balanced')
         Learner.cross_validation(clf, folds)
         """
-        # Wrap a bunch of classifiers and let them voting on each fold
+        # Wrap a bunch of classifiers and let them voting on each fold.
         clfs = [svm.SVC(kernel='linear', class_weight='balanced', probability=True),
                 RandomForestClassifier(class_weight='balanced'),
                 LogisticRegression(class_weight='balanced')]
@@ -137,21 +144,21 @@ class ContextProcessor:
             # pd.Series(folds).to_json(json_file, orient='values')
             logger.info(len(folds))
             json.dump(folds, json_file)
-        """
-        with open(os.path.join(instances_dir_path, 'voting_res.json'), 'w') as json_file:
+
+        with open(os.path.join(contexts_dir, 'voting_res.json'), 'w') as json_file:
             pd.Series(res).to_json(json_file, orient='split')
-            json.dump(res, json_file)
-        with open(os.path.join(instances_dir_path, 'voting_predicted_neg.json'), 'w') as json_file:
-            json.dump(predicted_neg_instances, json_file)
-        """
+        #   json.dump(res, json_file)
+        # with open(os.path.join(contexts_dir, 'voting_predicted_pos.json'), 'w') as json_file:
+            # json.dump(predicted_pos_instances, json_file)
 
 
 if __name__ == '__main__':
     root_dir = sys.argv[len(sys.argv) - 1]
     reset = False
     if len(sys.argv) > 1:
-        reset = True if '-r' in sys.argv else False
-    logger.setLevel(10)
+        reset = True if '-r' in sys.argv else reset
+    logger.setLevel(logging.DEBUG)
     logger.info('The data stored at: ', root_dir)
-    Learner.logger.setLevel(20)
-    ContextProcessor.process(root_dir, reset_out_dir=reset)
+    learner.logger.setLevel(logging.INFO)
+    samples, samples_dir = ContextProcessor.process(root_dir, reset_out_dir=reset)
+    ContextProcessor.train(samples, samples_dir)
