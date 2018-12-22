@@ -220,7 +220,7 @@ def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
                 copytree(root, dest_dir)
 
 
-def extract_flow_pcap_helper(taint, pcap_path):
+def extract_flow_pcap_helper(http_taints, pcap_path):
     """
     The helper of extract_flow_pcap.
     Given a taint record, extract the flow in the pcap file and output the pcap flow.
@@ -228,19 +228,14 @@ def extract_flow_pcap_helper(taint, pcap_path):
     :param pcap_path:
     :return:
     """
-    ip = taint['dst']
-    if 'data=' in taint['message']:
-        data = taint['message'].split('data=')[1]
-    elif 'data' in taint['message']:
-        data = taint['message'].split('data')[1]
-    else:
-        raise Exception('Cannot extract data from taint message')
     try:
         # Get filtered http requests based on the TaintDroid logs (ip, data).
-        flows = http_requests(pcap_path, filter_func=filter_pcap,
-                              args=[ip, data])
+
+        flows = http_requests(pcap_path)
         # Output to pcaps.
         for flow in flows:
+            for taint in http_taints:
+                ip = taint['ip']
             try:
                 pkts = rdpcap(pcap_path)
                 filter_pcap(os.path.dirname(pcap_path), pkts, flow['dest'],
@@ -255,11 +250,11 @@ def extract_flow_pcap_helper(taint, pcap_path):
         return []
 
 
-def extract_flow_pcap(taint, sub_dir):
+def extract_flow_pcap(http_taints, sub_dir):
     """
     Given a taint record, extract the flow in the pcap file and output the pcap flow.
     :rtype: object
-    :param taint:
+    :param http_taints:
     :param sub_dir:
     :return:
     """
@@ -267,7 +262,12 @@ def extract_flow_pcap(taint, sub_dir):
     for root, dirs, files in os.walk(sub_dir, topdown=False):
         for filename in files:
             if 'filter' not in filename and re.search('pcap$', filename):
-                flows += extract_flow_pcap_helper(taint, os.path.join(root, filename))
+                pcap_path = os.path.join(root, filename)
+                for i in range(tcp_stream_number(pcap_path) + 1):
+                    http_trace(pcap_path, i)
+
+
+                flows += extract_flow_pcap_helper(taint, )
     return flows
 
 
@@ -302,10 +302,20 @@ def parse_dir(work_dir):
         for dir_name in dirs:
             logger.info(os.path.join(root, dir_name))
             taints = parse_logs(os.path.join(root, dir_name))
+            http_taints = []
             for taint in taints:
                 if 'HTTP' in taint['channel']:
-                    logger.info(taint)
-                    flows[str(taint)] = extract_flow_pcap(taint, os.path.join(root, dir_name))
+                    logger.debug(taint)
+                    ip = taint['dst']
+                    if 'data=' in taint['message']:
+                        data = taint['message'].split('data=')[1]
+                    elif 'data' in taint['message']:
+                        data = taint['message'].split('data')[1]
+                    else:
+                        logger.warn('Cannot extract content from the taint message!')
+                        continue
+                    http_taints.append({'ip': ip, 'data': data})
+            flows[str(taint)] = extract_flow_pcap(taint, os.path.join(root, dir_name))
     return flows
 
 

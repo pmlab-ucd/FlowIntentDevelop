@@ -48,10 +48,12 @@ def tcp_stream(pcap_path, stream_index, out_dir='./', out_name=None, overwrite=T
     :return:
     """
     if out_name is None:
-            out_name = os.path.basename(pcap_path).replace('.pcap', '') + '_ts_' + str(stream_index) + '.pcap'
+        out_name = os.path.basename(pcap_path).replace('.pcap', '') + '_ts_' + str(stream_index) + '.pcap'
+    elif not out_name.endswith('.pcap'):
+        out_name += '.pcap'
     out_pcap = os.path.join(out_dir, out_name)
     if (not overwrite) and os.path.exists(out_pcap):
-            return
+        return
     cmd = 'tshark -r ' + pcap_path + ' -Y "tcp.stream==' + str(stream_index) + '" -w ' + out_pcap
     logger.debug(cmd)
     os.system(cmd)
@@ -210,6 +212,28 @@ def http_requests_helper(pcap, label='', filter_by_packet_info=None, filter_by_f
     return flows
 
 
+def http_trace(pcap, stream_index=0, label=''):
+    """
+    The implementation of http_requests, which extract the interested http requests from a given pcap.
+    :param: pcap: pcap path.
+    :param: stream_index: The tcp stream index labelled by tshark.
+    :param: label: The supervised learning label of the extracted http requests.
+    """
+    cmd = 'tshark -r ' + pcap + ' -Y "tcp.stream eq ' + str(stream_index) + '"' \
+                                                                            ' -T fields -e frame.len -e tcp.srcport -e http.request.full_uri -e frame.time_epoch' \
+                                                                            ' -e http.referer -e http.response -e http.content_length'
+    lines = os.popen(cmd).readlines()
+    i = 0
+    for line in lines:
+        if line.rstrip() is not '':
+            i += 1
+            logger.debug(str(i) + ' ' + line)
+    logger.debug(cmd)
+
+    flow = dict()
+    return flow
+
+
 def http_requests(pcap_path, label='', filter_func=None, filter_flow=None, args=None):
     """
     Extract http requests from the pcap, based on the given filter function.
@@ -316,22 +340,5 @@ def filter_pcap_by_ip(dirname, pkts, ip):
 
 if __name__ == '__main__':
     input_pcap_path = 'H:\\FlowIntent\\test\\0\\com.anforen.voicexf' \
-                      '\\com.anforen.voicexf0713-00-01-55.pcap'
-    tcp_stream(input_pcap_path, 13, 'H:\\FlowIntent\\test\\0\\com.anforen.voicexf\\')
-
-    """
-    p = rdpcap(pcap_path)
-    sessions = p.sessions()
-    for session in sessions:
-        http_payload = ""
-        print sessions[session]
-        for packet in sessions[session]:
-            try:
-                if packet[TCP].dport == 80 or packet[TCP].sport == 80:
-                    http_payload += str(packet[TCP].payload)
-                print packet[TCP].sport
-                break
-            except:
-                pass
-
-    """
+                      '\\com.anforen.voicexf0713-00-01-55_ts_13.pcap'
+    http_trace(input_pcap_path)
