@@ -19,52 +19,42 @@ The utilities to process pcap files.
 """
 
 
-def tcp_streams(pcap_path, out_dir=None):
+def tcp_stream_number(pcap_path):
     """
-    Retrieve tcp packets from a pcap and output to a pcap, with the help of tshark.
-    :param pcap_path:
-    :param out_dir:
+    Get the number of number tcp streams, with the help of tshark.
+    :param pcap_path: The input directory.
+    :return: The number of tcp streams identified by tshark.
+    """
+    cmd = 'tshark -r ' + pcap_path + ' -T fields -e tcp.stream'  # | sort -n | tail -1'
+    lines = os.popen(cmd).readlines()
+    max_index = 0
+    for line in lines:
+        if line.rstrip().isdigit():
+            max_index = max(max_index, int(line))
+    logger.debug(cmd)
+    logger.debug(max_index)
+    return max_index
+
+
+def tcp_stream(pcap_path, stream_index, out_dir='./', out_name=None, overwrite=True):
+    """
+    Retrieve tcp packets of a HTTP trace from a pcap and output to a pcap, with the help of tshark.
+    tshark is able to retrieve the whole tcp stream, including the packet in HTTP response.
+    :param pcap_path: The input directory.
+    :param stream_index: The index of the HTTP trace.
+    :param out_dir: The output directory.
+    :param out_name: The output pcap name.
+    :param overwrite:
     :return:
     """
-    amount = os.popen('tshark -r ' + pcap_path + ' -T fields -e tcp.stream | sort -n | tail -1').read()
-    streams = []
-    logger.debug(amount)
-    """
-    for i in range(int(amount)):
-        stream = dict()
-        cmd = 'tshark -r ' + pcap_path + ' -qz follow,tcp,ascii,' + str(i)
-        output = os.popen(cmd).readlines()
-        for line in output:
-            if 'Node 0' in line:
-                line = line.replace(': ', '-')
-
-                ip = line.split(':')[0].split('-')[1]
-                port = line.split(':')[1].replace('\n', '')
-                stream['src'] = ip
-                stream['sport'] = port
-            if 'Node 1' in line:
-                line = line.replace(': ', '-')
-
-                ip = line.split(':')[0].split('-')[1]
-                port = line.split(':')[1].replace('\n', '')
-                stream['dest'] = ip
-                stream['dport'] = port
-                stream['index'] = i
-                print stream
-                streams.append(stream)
-    """
-
-    if out_dir is None:
-        return
-    for i in range(int(amount)):
-        out_pcap = os.path.join(out_dir,
-                                os.path.basename(pcap_path).replace('.pcap', '') + '_ts_' + str(i) + '.pcap')
-        if os.path.exists(out_pcap):
-            continue
-        cmd = 'tshark -r ' + pcap_path + ' -Y "tcp.stream==' + str(i) + '" -w ' + out_pcap
-        logger.info(cmd)
-        os.system(cmd)
-    return streams
+    if out_name is None:
+            out_name = os.path.basename(pcap_path).replace('.pcap', '') + '_ts_' + str(stream_index) + '.pcap'
+    out_pcap = os.path.join(out_dir, out_name)
+    if (not overwrite) and os.path.exists(out_pcap):
+            return
+    cmd = 'tshark -r ' + pcap_path + ' -Y "tcp.stream==' + str(stream_index) + '" -w ' + out_pcap
+    logger.debug(cmd)
+    os.system(cmd)
 
 
 def print_pacp(pcap):
@@ -325,9 +315,9 @@ def filter_pcap_by_ip(dirname, pkts, ip):
 
 
 if __name__ == '__main__':
-    input_pcap_path = '/mnt/Documents/FlowIntent/output/test/2421536307fd9a885cc66c58419cea2e307620dfb67ab96f11aa33380da14c93' \
-                      '/com.mogo.katongllk0710-08-27-45.pcap'
-    tcp_streams(input_pcap_path)
+    input_pcap_path = 'H:\\FlowIntent\\test\\0\\com.anforen.voicexf' \
+                      '\\com.anforen.voicexf0713-00-01-55.pcap'
+    tcp_stream(input_pcap_path, 13, 'H:\\FlowIntent\\test\\0\\com.anforen.voicexf\\')
 
     """
     p = rdpcap(pcap_path)

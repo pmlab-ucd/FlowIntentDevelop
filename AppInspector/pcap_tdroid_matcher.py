@@ -43,7 +43,7 @@ def gen_tag(src):
 
 def filter_pcap(args, packet):
     """
-    Filter pcap based on TaintLog: ip and data.
+    Filter pcap with given ip and data.
     It is a helper function used as a argument in the main filtering process.
     :param args: including ip and data.
     :param packet:
@@ -292,8 +292,8 @@ def parse_logs(sub_dir):
 
 def parse_dir(work_dir):
     """
-    Parse the given dir and for each sub dir (an app's data), extract the detected taints from json and the flows based
-    on the taints from the pcap.
+    Parse the given dir and for each sub dir (an app's data), extract the detected taints from json, then use the taints
+     to match the flows in the pcap.
     :param work_dir:
     :return:
     """
@@ -398,7 +398,7 @@ if __name__ == '__main__':
     out_dir = os.path.join('/Documents/FlowIntent/output/ground/', taint_type)
     out_dir = os.path.join(out_dir, dataset)
 
-    # Derive the filtered pcap based on the taint src.
+    # Derive the interested flows from pcaps based on the taint src, and reout.
     parse_dir(base_dir)
     # Copy the dir to the destination dir (the dir for labelling ground truth) based on the taint.
     organize_dir_by_taint(base_dir, out_dir, taint_type, has_sub_dataset)
