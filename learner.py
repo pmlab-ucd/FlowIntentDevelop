@@ -5,7 +5,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn import tree
 from sklearn.naive_bayes import BernoulliNB
 # import pydotplus
-import codecs
+from statistics import *
 import pickle
 from sklearn.metrics import accuracy_score
 from sklearn import svm
@@ -46,6 +46,7 @@ class StemmedTfidfVectorizer(TfidfVectorizer):
 
 
 logger = set_logger('Learner')
+
 
 class Learner:
     class LabelledDocs:
@@ -563,6 +564,10 @@ class Learner:
             word_list.append(word)
         # return ' '.join(words)
         return word_list
+
+    @staticmethod
+    def stat_fea_cal(x):
+        return [min(x), max(x), mean(x), median(x), s_dev(x), skewness(x), kurtosis(x)]
 
     @staticmethod
     def voting(clfs, X, y, folds):

@@ -7,6 +7,8 @@ import datetime
 import socket
 from dpkt.compat import compat_ord
 
+from learner import Learner
+
 from utils import set_logger
 
 logger = set_logger('pcap_processor')
@@ -212,25 +214,77 @@ def http_requests_helper(pcap, label='', filter_by_packet_info=None, filter_by_f
     return flows
 
 
-def http_trace(pcap, stream_index=0, label=''):
+def http_trace(pcap, stream_index=0, label='', filter_funcs=None, args=None):
     """
     The implementation of http_requests, which extract the interested http requests from a given pcap.
     :param: pcap: pcap path.
     :param: stream_index: The tcp stream index labelled by tshark.
     :param: label: The supervised learning label of the extracted http requests.
+    :return flow: The feature value of the HTTP trace.
     """
-    cmd = 'tshark -r ' + pcap + ' -Y "tcp.stream eq ' + str(stream_index) + '"' \
-                                                                            ' -T fields -e frame.len -e tcp.srcport -e http.request.full_uri -e frame.time_epoch' \
-                                                                            ' -e http.referer -e http.response -e http.content_length'
+    cmd = 'tshark -r ' + pcap + ' -Y "tcp.stream eq ' + str(stream_index) + '" -T fields ' \
+                                                                            '-e frame.len ' \
+                                                                            '-e tcp.srcport ' \
+                                                                            '-e frame.protocols ' \
+                                                                            '-e frame.time_epoch ' \
+                                                                            '-e ip.dst '\
+                                                                            '-e http.request.full_uri ' \
+                                                                            '-e http.content_length ' \
+                                                                            '-e http.response '
+    flow = dict()
     lines = os.popen(cmd).readlines()
+    logger.debug(cmd)
     i = 0
+    frame_lengths = []
+    epochs = []
+    up_count = 0
+    up_port = -1
+    up_frames = []
+    down_frames = []
+    non_http_tcp_num = 0
+    ip_dst = ''
+    url = ''
     for line in lines:
         if line.rstrip() is not '':
             i += 1
             logger.debug(str(i) + ' ' + line)
-    logger.debug(cmd)
+            values = line.split('\t')
+            logger.debug(len(values))
+            frame_len = int(values[0])
+            frame_lengths.append(frame_len)
+            non_http_tcp_num = (non_http_tcp_num + 1) if 'http' in values[2] else non_http_tcp_num
+            epochs.append(float(values[3]))
+            if i == 1:
+                up_port = values[1]
+                ip_dst = values[4]
+            if values[1] == up_port:
+                up_count += 1
+                up_frames.append(frame_len)
+            else:
+                down_frames.append(frame_len)
+            url = values[5] if values[5] is not '' else url
+    taint = ''
+    if filter_funcs is not None:
+        for i in range(len(filter_funcs)):
+            if not filter_funcs[i](args[i], [ip_dst, url]):
+                return None
+            else:
+                taint += args[i][2]
+    intervals = []
+    for i in range(1, len(epochs)):
+        intervals.append(epochs[i] - epochs[i - 1])
+    flow['frame_num'] = i
+    flow['up_count'] = up_count
+    flow['non_http_num'] = non_http_tcp_num
+    flow['len_stat'] = Learner.stat_fea_cal(frame_lengths)
+    flow['epoch_stat'] = Learner.stat_fea_cal(intervals)
+    flow['up_stat'] = Learner.stat_fea_cal(up_frames)
+    flow['down_stat'] = Learner.stat_fea_cal(down_frames)
+    flow['url'] = url
+    flow['label'] = label
+    flow['taint'] = taint
 
-    flow = dict()
+    logger.debug(flow)
     return flow
 
 
