@@ -8,18 +8,28 @@ import time
 ISO_TIME_FORMAT = '%m%d-%H-%M-%S'
 
 
-def set_logger(tag):
-    logger = logging.getLogger(tag)
-    logger.setLevel(logging.DEBUG)
+def set_logger(tag, level='DEBUG'):
+    log = logging.getLogger(tag)
+    console_handler = logging.StreamHandler()
 
-    consolehandler = logging.StreamHandler()
-    consolehandler.setLevel(logging.DEBUG)
+    if level == 'DEBUG':
+        log.setLevel(logging.DEBUG)
+        console_handler.setLevel(logging.DEBUG)
+    elif level == 'INFO':
+        log.setLevel(logging.INFO)
+        console_handler.setLevel(logging.INFO)
+    elif level == 'WARN':
+        log.setLevel(logging.WARN)
+        console_handler.setLevel(logging.WARN)
+    else:
+        log.setLevel(logging.ERROR)
+        console_handler.setLevel(logging.ERROR)
 
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    consolehandler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
 
-    logger.addHandler(consolehandler)
-    return logger
+    log.addHandler(console_handler)
+    return log
 
 
 logger = set_logger('Utilities')
@@ -40,10 +50,10 @@ def run_cmd(cmd):
                 tmp = line.replace(' ', '')
                 tmp = tmp.replace('\n', '')
                 if tmp != '':
-                    Utilities.logger.debug(line)
+                    logger.debug(line)
             break
         except Exception as exc:
-            Utilities.logger.warn(exc)
+            logger.warning(exc)
             result = False
             if i == 2:
                 # close_emulator(emu_proc)
@@ -80,7 +90,7 @@ def kill_proc_tree(pid, including_parent=True):
         parent.wait(5)
 
 
-def run_method(target, timeout, args=[]):
+def run_method(target, timeout, args=None):
     p = threading.Thread(target=target, args=args)
     p.start()
     # Wait for 120 seconds or until process finishes
@@ -89,7 +99,7 @@ def run_method(target, timeout, args=[]):
     if p.is_alive():
         # Terminate
         # p.terminate()
-        logger.warn('Timeout!!!')
+        logger.warning('Timeout!!!')
         try:
             kill_proc_tree(p.ident, including_parent=False)
         except psutil.NoSuchProcess:
@@ -143,7 +153,7 @@ def kill_by_name(name):
     for proc in psutil.process_iter():
         # check whether the process name matches
         if proc.name() == name:
-            kill()
+            kill(proc.pid)
 
 
 def current_time():

@@ -108,11 +108,7 @@ def filter_pcap_ip_url(rule, real):
     url = real[1]
     if ip_dst == ip:
         logger.debug('Found: ' + ip_dst)
-        data = str(data).replace('[', '')
-        data = data.replace(']', '')
-        data = data.replace('GET ', '') if 'GET ' in data else data
-        data = data.replace('POST ', '') if 'POST ' in data else data
-        data = data.replace(' ', '')
+
         if data in url:
             return True
         else:
@@ -121,7 +117,7 @@ def filter_pcap_ip_url(rule, real):
     return False
 
 
-def parse_json_log(log_file, pkg):
+def parse_taint_json_log(log_file, pkg):
     """
     Parse the TaintDroid logs (jsons) and return a tainted record.
     :param log_file:
@@ -153,6 +149,14 @@ def parse_exerciser_log(log_file):
                     return line.split('pkg:')[1].replace('\n', '')
 
 
+def apk_name(sub_dir):
+    if os.path.exists(os.path.join(sub_dir, 'UIExerciser_FlowIntent_FP_PY.log')):
+        pkg = parse_exerciser_log(sub_dir + '/UIExerciser_FlowIntent_FP_PY.log')
+    else:
+        pkg = os.path.basename(sub_dir)
+    return pkg
+
+
 def clean_folder(work_dir: str, tsrc: str = 'Location') -> None:
     """
     Further remove the Activities that do not contain tsrc taint or meaningful UI.
@@ -172,7 +176,7 @@ def clean_folder(work_dir: str, tsrc: str = 'Location') -> None:
                     pkg = parse_exerciser_log(flowintent_log)
                 else:
                     pkg = os.path.basename(root)
-                taints = parse_json_log(os.path.join(root, fn), pkg)
+                taints = parse_taint_json_log(os.path.join(root, fn), pkg)
                 found = False
                 for taint in taints:
                     if tsrc in taint['src']:
@@ -250,13 +254,12 @@ def extract_flow_pcap_helper(http_taints, pcap_path):
     """
     The helper of extract_flow_pcap.
     Given a taint record, extract the flow in the pcap file and output the pcap flow.
-    :param taint:
+    :param http_taints:
     :param pcap_path:
     :return:
     """
     try:
         # Get filtered http requests based on the TaintDroid logs (ip, data).
-
         flows = http_requests(pcap_path)
         # Output to pcaps.
         for flow in flows:
@@ -265,7 +268,7 @@ def extract_flow_pcap_helper(http_taints, pcap_path):
                 try:
                     pkts = rdpcap(pcap_path)
                     filter_pcap(os.path.dirname(pcap_path), pkts, flow['dest'],
-                            flow['sport'], tag=gen_tag(taint['src']))
+                                flow['sport'], tag=gen_tag(taint['src']))
                 except IOError as e:
                     logger.warn(e.args)
         return flows
@@ -306,17 +309,35 @@ def parse_logs(sub_dir):
     :param sub_dir:
     :return:
     """
-    if os.path.exists(os.path.join(sub_dir, 'UIExerciser_FlowIntent_FP_PY.log')):
-        pkg = parse_exerciser_log(sub_dir + '/UIExerciser_FlowIntent_FP_PY.log')
-    else:
-        pkg = os.path.basename(sub_dir)
+    pkg = apk_name(sub_dir)
     logger.info(pkg)
     taints = []
     for root, dirs, files in os.walk(sub_dir, topdown=False):
         for filename in files:
-            if re.search('json$', filename):
-                taints += parse_json_log(os.path.join(root, filename), pkg)
-    return taints
+            if filename.endswith('.json'):
+                taints += parse_taint_json_log(os.path.join(root, filename), pkg)
+    return taints, pkg
+
+
+def http_taints(taints):
+    target_taints = []
+    for taint in taints:
+        if 'HTTP' in taint['channel']:
+            logger.debug(taint)
+            ip = taint['dst']
+            if 'data=' in taint['message']:
+                data = taint['message'].split('data=')[1]
+            elif 'data' in taint['message']:
+                data = taint['message'].split('data')[1]
+            else:
+                logger.warn('Cannot extract content from the taint message!')
+                continue
+            data = data.replace('[', '').replace(']', '')
+            data = data.replace('GET ', '') if 'GET ' in data else data
+            data = data.replace('POST ', '') if 'POST ' in data else data
+            data = data.replace(' ', '')
+            target_taints.append({'ip': ip, 'data': data, 'type': str(taint)})
+    return target_taints
 
 
 def parse_dir(work_dir):
@@ -330,103 +351,10 @@ def parse_dir(work_dir):
         for dir_name in dirs:
             dir_path = os.path.join(root, dir_name)
             logger.debug(dir_path)
-            taints = parse_logs(dir_path)
-            http_taints = []
-            for taint in taints:
-                if 'HTTP' in taint['channel']:
-                    logger.debug(taint)
-                    ip = taint['dst']
-                    if 'data=' in taint['message']:
-                        data = taint['message'].split('data=')[1]
-                    elif 'data' in taint['message']:
-                        data = taint['message'].split('data')[1]
-                    else:
-                        logger.warn('Cannot extract content from the taint message!')
-                        continue
-                    http_taints.append({'ip': ip, 'data': data, 'type': str(taint)})
-            flows = extract_flow_pcap(http_taints, dir_path)
-            with open(os.path.join(dir_path, 'flows.json'), 'w', encoding="utf8") as outfile:
+            taints, pkg = parse_logs(dir_path)
+            flows = extract_flow_pcap(http_taints(taints), dir_path)
+            with open(os.path.join(dir_path, pkg + '_sens_http_flows.json'), 'w', encoding="utf8") as outfile:
                 json.dump(flows, outfile)
-
-
-def write_pcap_txt(dirname, pcap):
-    """
-    TODO
-    :param dirname:
-    :param pcap:
-    :return:
-    """
-    result = os.popen('parse_pcap ' + dirname + '/' + pcap + ' > ' + dirname + '/' + pcap.split('.pcap')[0] + '.txt')
-    logger.info(result)
-
-
-def match_flow(pcap_txt, ip, data, time, dirname, pcap, ips, urls, domains, ip_domain):
-    """
-    TODO
-    Match network flows in pcap based on ip, data and time.
-    :param pcap_txt:
-    :param ip:
-    :param data:
-    :param time:
-    :param dirname:
-    :param pcap:
-    :param ips:
-    :param urls:
-    :param domains:
-    :param ip_domain:
-    :return:
-    """
-    data = data.replace('?', '\\?').replace('(', '\\(').replace(')', '\\)').replace('[', '\\[')
-    try:
-        pcap_txt = open(pcap_txt, 'r')
-    except IOError:
-        logger.warn(dirname + '/' + pcap)
-        write_pcap_txt(dirname, pcap)
-        pcap_txt = open(pcap_txt, 'r')
-        # return False
-    lines = pcap_txt.readlines()
-    flag = False
-    # Examine all lines in pcap-txt, check whether match
-    for i in range(len(lines)):
-        line = lines[i]
-        logger.debug(str(line))
-        if re.search(data, line):
-            flag = True
-            ips.add(ip)
-            try:
-                domain = line.split('//')[1].split('/')[0]
-                if domain not in domains:
-                    domains.add(domain)
-                    if not str(ip) in ip_domain:
-                        ip_domain[str(ip)] = [domain]
-                    else:
-                        ip_domain[str(ip)].append(domain)
-                if re.search('http', data):
-                    uri = data
-                else:
-                    try:
-                        uri = domain + '/' + data.split('\\')[1]
-                    except Exception as e:
-                        uri = domain + data
-                        logger.debug(e)
-                urls.add(uri)
-            except IndexError:
-                print('Data: ' + data)
-                print('ERROR URI: ' + line)
-                continue
-            try:
-                # Extract port number from pcap_txt.
-                port = int(lines[i - 1].split(':')[1].split(']')[0])
-            except Exception as e:
-                logger.warn(e)
-                continue
-            logger.debug(port)
-            filter_pcap(dirname, pcap, time, port, ip)
-    if not flag:
-        logger.info(data)
-        return False
-    else:
-        return True
 
 
 if __name__ == '__main__':
@@ -438,7 +366,7 @@ if __name__ == '__main__':
     out_dir = os.path.join('/Documents/FlowIntent/output/ground/', taint_type)
     out_dir = os.path.join(out_dir, dataset)
 
-    # Derive the interested flows from pcaps based on the taint src, and reout.
+    # Derive the interested flows from pcaps based on the taint src, and output the corresponding jsons.
     parse_dir(base_dir)
     # Copy the dir to the destination dir (the dir for labelling ground truth) based on the taint.
     organize_dir_by_taint(base_dir, out_dir, taint_type, has_sub_dataset)
