@@ -10,6 +10,7 @@ from shutil import copytree, rmtree
 from xml.dom.minidom import parseString
 from pcap_processor import *
 from utils import set_logger
+from argparse import ArgumentParser
 
 logger = set_logger('TaintDroidLogProcessor')
 
@@ -174,8 +175,8 @@ def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
                             if sub_dataset:
                                 dataset_name = os.path.basename(os.path.abspath(os.path.join(root, os.pardir)))
                                 dest_dir = os.path.join(to_dir, dataset_name)
-                            logger.debug('root:', root)
-                            logger.debug('dirname:', dirname)
+                            logger.debug('root: ' + root)
+                            logger.debug('dirname:' + dirname)
                             dest_dir = os.path.join(dest_dir, dirname)
                             if os.path.exists(dest_dir):
                                 rmtree(dest_dir)
@@ -269,8 +270,8 @@ def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False):
     """
     The main procedure of pcap_tdroid_mather.py.
     :param base_dir: The base dir of input dir.
-    :param out_dir:
-    :param taint_type:
+    :param out_dir: The base dir of output dir.
+    :param taint_type: The taint type, such as Location, IMEI, etc. See "gen_tag(src)".
     :param dataset: The dataset name (sub dir of the base dir).
     :param has_sub_dataset: Whether dataset has sub dir.
     """
@@ -288,4 +289,17 @@ def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False):
 
 
 if __name__ == '__main__':
-    match('H:/COSMOS/output/py/', 'H:/FlowIntent/output/ground/', 'Location', 'Play_win8', True)
+    parser = ArgumentParser()
+    parser.add_argument("-i", "--in_dir", dest="in_dir",
+                        help="the full path of base dir of input directory")
+    parser.add_argument("-o", "--out_dir", dest="out_dir",
+                        help="the full path of base dir of output directory")
+    parser.add_argument("-t", "--taint", dest="taint",
+                        help="taint type, such as Location")
+    parser.add_argument("-d", "--dataset", dest="dataset",
+                        help="the dataset name (sub dir of the base dir)")
+    parser.add_argument("-s", "--sub", dest="sub_dir", default=False,
+                        help="whether dataset has sub dir.")
+    args = parser.parse_args()
+    # Example: pcap_tdroid_matcher.py -i test/data -o test/data/ground/ -t Location -d raw
+    match(args.in_dir, args.out_dir, args.taint, args.dataset, has_sub_dataset=args.sub_dir)
