@@ -37,5 +37,10 @@ class TestPcapTaintDroidMatcher(unittest.TestCase):
         taints, pkg = parse_logs(sub_dir)
         tgt_taints = http_taints(taints)
         flows = extract_flow_pcap(tgt_taints, sub_dir)
-        log.debug('Flows: ' + str(flows))
+        self.assertEqual(len(flows), 3)
+        for flow in flows:
+            self.assertTrue('IMEI' in flow['taint'])
+            log.debug('Flow: ' + str(flow))
+            if 'Location' in flow['taint']:
+                self.assertTrue('location' in flow['url'])
 

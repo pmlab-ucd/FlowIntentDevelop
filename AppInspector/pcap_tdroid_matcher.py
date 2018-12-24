@@ -197,10 +197,10 @@ def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
 def extract_flow_pcap(target_taints, sub_dir):
     """
     Given a taint record, extract the flow in the pcap file and output the pcap flow.
-    :rtype: object
+    :rtype: list
     :param target_taints:
     :param sub_dir:
-    :return:
+    :return: flows:
     """
     filter_funcs = []
     args = []
