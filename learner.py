@@ -45,9 +45,6 @@ class StemmedTfidfVectorizer(TfidfVectorizer):
         return lambda doc: ([PorterStemmer().stem(w) for w in analyzer(doc)])
 
 
-logger = set_logger('Learner')
-
-
 class Learner:
     class LabelledDocs:
         @staticmethod
@@ -227,7 +224,7 @@ class Learner:
         clf = BernoulliNB()
         results = None
         if n_fold != 0:
-            results = Learner.cross_validation(clf, train_data, labels, n_fold=n_fold)
+            results = Learner.cross_validation(clf, train_data, labels, n=n_fold)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             logger.info('Bayes: ' + str(results['duration']))

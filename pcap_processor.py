@@ -6,7 +6,6 @@ from utils import set_logger
 
 logger = set_logger('pcap_processor', 'INFO')
 
-
 """
 The utilities to process pcap files. 
 """
@@ -65,7 +64,7 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
                                                                             '-e tcp.srcport ' \
                                                                             '-e frame.protocols ' \
                                                                             '-e frame.time_epoch ' \
-                                                                            '-e ip.dst '\
+                                                                            '-e ip.dst ' \
                                                                             '-e http.request.full_uri ' \
                                                                             '-e http.content_length ' \
                                                                             '-e http.response '

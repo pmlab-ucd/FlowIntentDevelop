@@ -114,22 +114,9 @@ def clean_folder(work_dir: str, tsrc: str = 'Location') -> None:
         for fn in files:
             if not os.path.exists(os.path.join(root, fn)):
                 continue
-            if str(fn).endswith('.json'):
-                flowintent_log = os.path.join(root, '/UIExerciser_FlowIntent_FP_PY.log')
-                if os.path.exists(flowintent_log):
-                    pkg = parse_exerciser_log(flowintent_log)
-                else:
-                    pkg = os.path.basename(root)
-                taints = parse_taint_json_log(os.path.join(root, fn), pkg)
-                found = False
-                for taint in taints:
-                    if tsrc in taint['src']:
-                        found = True
-                if not found:
-                    rm_instance_meta(root, fn)
 
             if str(fn).endswith('xml'):
-                # Clean the xml (and other relevant data) whose content does not contain any app UI.
+                # Clean the hierarchy xml (and other relevant data) whose content does not contain any app UI.
                 xml_path = os.path.join(root, fn)
                 try:
                     with open(xml_path, 'rb') as f:
@@ -171,7 +158,7 @@ def rm_instance_meta(root, fn):
 
 def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
     """
-    Copy the dir to the destination dir (the dir for labelling ground truth) based on the taint.
+    Copy the dir to the destination dir (the dir to label ground truth) based on the taint.
     :param src_dir:
     :param to_dir:
     :param taint: The taint type.
@@ -179,25 +166,31 @@ def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
     """
     for root, dirs, files in os.walk(src_dir, topdown=False):
         for filename in files:
-            # If keyword "filter" and founded taint src in filename, means it is a target pkg.
-            if 'filter' in filename and taint in filename:
-                dirname = os.path.basename(os.path.dirname(os.path.join(root, filename)))
-                dest_dir = to_dir
-                if sub_dataset:
-                    dataset_name = os.path.basename(os.path.abspath(os.path.join(root, os.pardir)))
-                    dest_dir = os.path.join(to_dir, dataset_name)
-                logger.info('root:', root)
-                logger.info('dirname:', dirname)
-                dest_dir = os.path.join(dest_dir, dirname)
-                if os.path.exists(dest_dir):
-                    rmtree(dest_dir)
-                copytree(root, dest_dir)
+            # If the given taint type is identified in flows, means it is a target pkg.
+            if filename.endswith('_sens_http_flows.json'):
+                file_path = os.path.join(root, filename)
+                with open(file_path, 'r') as infile:
+                    flows = json.load(infile)
+                    for flow in flows:
+                        if taint in flow['taint']:
+                            dirname = os.path.basename(os.path.dirname(file_path))
+                            dest_dir = to_dir
+                            if sub_dataset:
+                                dataset_name = os.path.basename(os.path.abspath(os.path.join(root, os.pardir)))
+                                dest_dir = os.path.join(to_dir, dataset_name)
+                            logger.debug('root:', root)
+                            logger.debug('dirname:', dirname)
+                            dest_dir = os.path.join(dest_dir, dirname)
+                            if os.path.exists(dest_dir):
+                                rmtree(dest_dir)
+                            copytree(root, dest_dir)
+                            break
 
 
 def extract_flow_pcap(target_taints, sub_dir):
     """
     Given a taint record, extract the flow in the pcap file and output the pcap flow.
-    :rtype: list
+    :rtype: dict
     :param target_taints:
     :param sub_dir:
     :return: flows:
@@ -207,14 +200,17 @@ def extract_flow_pcap(target_taints, sub_dir):
     for http_taint in target_taints:
         filter_funcs.append(match_pcap_ip_url)
         args.append([http_taint['ip'], http_taint['data'], gen_tag(http_taint['src'])])
-    flows = []
+    flows = dict()
     for filename in os.listdir(sub_dir):
         if 'filter' not in filename and filename.endswith('.pcap'):
+            sub_flows = []
             pcap_path = os.path.join(sub_dir, filename)
             for i in range(tcp_stream_number(pcap_path) + 1):
                 flow = http_trace(pcap_path, i, matching_funcs=filter_funcs, args=args)
                 if flow is not None:
-                    flows.append(flow)
+                    sub_flows.append(flow)
+            if len(sub_flows) != 0:
+                flows[os.path.splitext(filename)[0]] = sub_flows
     return flows
 
 
@@ -268,8 +264,9 @@ def parse_dir(work_dir):
             logger.debug(dir_path)
             taints, pkg = parse_logs(dir_path)
             flows = extract_flow_pcap(http_taints(taints), dir_path)
-            with open(os.path.join(dir_path, pkg + '_sens_http_flows.json'), 'w', encoding="utf8") as outfile:
-                json.dump(flows, outfile)
+            for pcap_fn, sub_flows in flows.items():
+                with open(os.path.join(dir_path, pcap_fn + '_sens_http_flows.json'), 'w', encoding="utf8") as outfile:
+                    json.dump(sub_flows, outfile)
 
 
 if __name__ == '__main__':

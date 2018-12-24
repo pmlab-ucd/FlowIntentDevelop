@@ -36,16 +36,19 @@ class TestPcapTaintDroidMatcher(unittest.TestCase):
         taints, pkg = parse_logs(sub_dir)
         tgt_taints = http_taints(taints)
         flows = extract_flow_pcap(tgt_taints, sub_dir)
-        self.assertEqual(len(flows), 3)
-        for flow in flows:
-            self.assertTrue('IMEI' in flow['taint'])
-            log.debug('Flow: ' + str(flow))
-            if 'Location' in flow['taint']:
-                self.assertTrue('location' in flow['url'])
+        self.assertEqual(len(flows), 1)
+        for pcap_file, sub_flows in flows.items():
+            self.assertEqual(len(sub_flows), 3)
+            self.assertEqual(pcap_file, 'com.gp.mahjongg0710-03-25-16')
+            for flow in sub_flows:
+                self.assertTrue('IMEI' in flow['taint'])
+                log.debug('Flow: ' + str(flow))
+                if 'Location' in flow['taint']:
+                    self.assertTrue('location' in flow['url'])
 
     def test_parse_dir(self):
-        target_json = "data/0897d40edb8b6b585f38ca1a9866bd03cd70a5035cc0ec28f933d702f9a38a03/com.gp" \
-                          ".mahjongg_sens_http_flows.json"
+        target_json = "data/0897d40edb8b6b585f38ca1a9866bd03cd70a5035cc0ec28f933d702f9a38a03/" \
+                      "com.gp.mahjongg0710-03-25-16_sens_http_flows.json"
         if os.path.exists(target_json):
             os.remove(target_json)
         parse_dir('data')
@@ -58,6 +61,3 @@ class TestPcapTaintDroidMatcher(unittest.TestCase):
             log.debug('Flow: ' + str(flow))
             if 'Location' in flow['taint']:
                 self.assertTrue('location' in flow['url'])
-
-
-
