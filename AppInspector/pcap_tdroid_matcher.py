@@ -101,20 +101,16 @@ def apk_name(sub_dir):
     return pkg
 
 
-def clean_folder(work_dir: str, tsrc: str = 'Location') -> None:
+def clean_folder(work_dir: str) -> None:
     """
-    Further remove the Activities that do not contain tsrc taint or meaningful UI.
+    Further remove the Activities that do not contain any meaningful UIs.
     :param work_dir:
-    :param tsrc:
     :return:
     """
     filter_keys = ['android', 'com.android.launcher',
                    'com.google.android.gsf.login', 'android.widget.LinearLayout']
     for root, dirs, files in os.walk(work_dir, topdown=False):
         for fn in files:
-            if not os.path.exists(os.path.join(root, fn)):
-                continue
-
             if str(fn).endswith('xml'):
                 # Clean the hierarchy xml (and other relevant data) whose content does not contain any app UI.
                 xml_path = os.path.join(root, fn)
@@ -151,9 +147,9 @@ def rm_instance_meta(root, fn):
             os.remove(os.path.join(root, filename + '.png'))
         if os.path.exists(os.path.join(root, filename + '.xml')):
             os.remove(os.path.join(root, filename + '.xml'))
-    os.remove(os.path.join(root, filename + '.json'))
+    os.remove(os.path.join(root, filename + '_sens_http_flows'))
     os.remove(os.path.join(root, filename + '.pcap'))
-    logger.info('del ' + filename)
+    logger.info('Delete ' + filename)
 
 
 def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
@@ -269,13 +265,18 @@ def parse_dir(work_dir):
                     json.dump(sub_flows, outfile)
 
 
-if __name__ == '__main__':
-    dataset = 'Play_win8'
-    has_sub_dataset = True  # Whether contain sub dataset.
-    base_dir = os.path.join('/mnt/H_DRIVE/COSMOS/output/py/', dataset)
+def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False):
+    """
+    The main procedure of pcap_tdroid_mather.py.
+    :param base_dir: The base dir of input dir.
+    :param out_dir:
+    :param taint_type:
+    :param dataset: The dataset name (sub dir of the base dir).
+    :param has_sub_dataset: Whether dataset has sub dir.
+    """
 
-    taint_type = 'Location'
-    out_dir = os.path.join('/Documents/FlowIntent/output/ground/', taint_type)
+    base_dir = os.path.join(base_dir, dataset)
+    out_dir = os.path.join(out_dir, taint_type)
     out_dir = os.path.join(out_dir, dataset)
 
     # Derive the interested flows from pcaps based on the taint src, and output the corresponding jsons.
@@ -284,3 +285,7 @@ if __name__ == '__main__':
     organize_dir_by_taint(base_dir, out_dir, taint_type, has_sub_dataset)
     # Remove the Activities that do not contain the taint or meaningful UI.
     clean_folder(out_dir)
+
+
+if __name__ == '__main__':
+    match('H:/COSMOS/output/py/', 'H:/FlowIntent/output/ground/', 'Location', 'Play_win8', True)
