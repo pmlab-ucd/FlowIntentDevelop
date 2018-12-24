@@ -108,10 +108,10 @@ class ContextProcessor:
         for fold in res['fold']:
             for item in fold['fp_item']:
                 instance = instances[item]
-                ContextProcessor.logger.info("FP:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
+                ContextProcessor.log.info("FP:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
             for item in fold['fn_item']:
                 instance = instances[item]
-                ContextProcessor.logger.info("FN:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
+                ContextProcessor.log.info("FN:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
         
         clf = MultinomialNB()
         Learner.cross_validation(clf, folds)

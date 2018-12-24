@@ -15,7 +15,7 @@ from AppInspector.Exerciser.sign_apks import sign_apk
 from AppInspector.Exerciser.ViewClientHandler import ViewClientHandler
 from AppInspector.Exerciser.online_tdroid_log_collector import OnlineTaintDroidLogHandler
 
-logger = set_logger('UIExerciser')
+logger = set_logger('UIExerciser', 'INFO')
 
 
 class UIExerciser:
@@ -227,10 +227,10 @@ class UIExerciser:
                     # UIExerciser.run_adb_cmd('shell "nohup logcat -v threadtime -s "UiDroid_Taint" > /sdcard/' + package + current_time +'.log &"')
 
                     # cmd = 'adb -s ' + series + ' shell "nohup /data/local/tcpdump -w /sdcard/' + package + current_time + '.pcap &"'
-                    # logger.info('tcpdump begins')
+                    # log.info('tcpdump begins')
                     # cmd = 'adb -s ' + UIExerciser.series + ' shell /data/local/tcpdump -w /sdcard/' +  activity + '.pcap'
                     # os.system(cmd)
-                    # logger.info(cmd)
+                    # log.info(cmd)
                     # process = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
                     UIExerciser.tcpdump_begin(package, cur_time, nohup=False)
                 time.sleep(2)
@@ -635,5 +635,5 @@ class UIExerciser:
         self.uninstall_pkg(series, package)
 
         file_handler.close()
-        self.logger.removeHandler(file_handler)
+        logger.removeHandler(file_handler)
         kill_by_name('adb.exe')

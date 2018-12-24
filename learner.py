@@ -87,7 +87,7 @@ class Learner:
                             jsons.append(json.load(fin))
                         except Exception as e:
                             print(e)
-                            # Utilities.logger.error(e)
+                            # Utilities.log.error(e)
         return jsons
 
     @staticmethod
@@ -108,12 +108,12 @@ class Learner:
             if len(vocab[i]) < 6 or vocab[i] in examined:
                 continue
             for j in range(i + 1, len(vocab)):
-                # logger.info('j: ' + vocab[j] + ' ' + str(j))
+                # log.info('j: ' + vocab[j] + ' ' + str(j))
                 if len(vocab[j]) < 6:
                     examined.append(vocab[j])
                     continue
                 if vocab[i] in vocab[j] or vocab[j] in vocab[i]:  # Learner.same_prefix(vocab[i], vocab[j]):
-                    # logger.info('Found ' + vocab[i] + ' ' + vocab[j] + ' ' + str(i))
+                    # log.info('Found ' + vocab[i] + ' ' + vocab[j] + ' ' + str(i))
                     examined.append(vocab[j])
                     for doc in docs:
                         if vocab[j] in doc.doc:
@@ -200,7 +200,7 @@ class Learner:
         logger.info(train_data.shape)
         # Take a look at the words in the vocabulary
         vocab = vectorizer.get_feature_names()
-        # logger.info(vocab)
+        # log.info(vocab)
         # train_data, labels = Learner.feature_filter_by_prefix(vocab, docs)
 
         return train_data, vocab, vectorizer
@@ -485,7 +485,7 @@ class Learner:
         data = vec.transform(instances)
         y_1 = model.predict(data)
 
-        # logger.info(y_1)
+        # log.info(y_1)
         if labels is not None:
             return accuracy_score(labels, y_1)
 
@@ -664,7 +664,7 @@ class Learner:
             for j in range(0, len(clfs)):
                 clf_name = type(clfs[j]).__name__
                 items = results[clf_name][i]['predicted_1']
-                # logger.info("num:" + str(len(items)))
+                # log.info("num:" + str(len(items)))
                 if j == 0:
                     for item in items:
                         overlap_predicted_pos_i.add(int(item))
@@ -677,7 +677,7 @@ class Learner:
                         if item in tmp:
                             another_tmp.add(item)
                     overlap_predicted_pos_i = another_tmp
-            # logger.debug(len(overlap_predicted_neg_i))
+            # log.debug(len(overlap_predicted_neg_i))
             folds[i]['vot_pred_pos'] = list(overlap_predicted_pos_i)
         return results
 

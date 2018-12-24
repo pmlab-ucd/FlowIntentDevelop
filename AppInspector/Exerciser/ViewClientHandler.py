@@ -98,7 +98,7 @@ class ViewClientHandler:
         sub_node = None
         if stream and s:
             ius = "%s%s" % (indent, s if isinstance(s, unicode) else unicode(s, 'utf-8', 'replace'))
-            # logger.info(stream, ius.encode('utf-8', 'replace')
+            # log.info(stream, ius.encode('utf-8', 'replace')
 
             bounds = str(root.getBounds()).replace('((', '[')
             bounds = bounds.replace('))', ']')

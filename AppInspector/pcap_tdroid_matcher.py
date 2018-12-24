@@ -41,63 +41,9 @@ def gen_tag(src):
     return tag
 
 
-def filter_pcap(args, packet):
+def match_pcap_ip_url(rule, real):
     """
-    Filter pcap with given ip and data.
-    It is a helper function used as a argument in the main filtering process.
-    :param args: including ip and data.
-    :param packet:
-    :return:
-    """
-    ip = args[0]
-    data = args[1]
-    # print 'called'
-    if filter_pcap_helper(ip, data, packet):
-        return True
-    return False
-
-
-def filter_pcap_helper(ip, data, packet):
-    """
-    The implementation of filtering pcap based on ip and data.
-    :param ip:
-    :param data:
-    :param packet:
-    :return:
-    """
-    # Set the TCP data
-    tcp = packet.data
-
-    src_ip = inet_to_str(packet.src)
-    dst_ip = inet_to_str(packet.dst)
-    # sport = packet.data.sport
-    # dport = packet.data.dport
-
-    if src_ip == ip or dst_ip == ip:
-        logger.debug('Found: ' + dst_ip)
-        try:
-            request = dpkt.http.Request(tcp.data)
-            data = str(data).replace('[', '')
-            data = data.replace(']', '')
-
-            if 'GET ' in data:
-                data = data.replace('GET ', '')
-            elif 'POST ' in data:
-                data = data.replace('POST ', '')
-            data = data.replace(' ', '')
-            if data in request.uri:
-                return True
-            else:
-                logger.warn('Not matched: ' + ip + ', ' + data + ', ' + request.uri)
-                return False
-        except (dpkt.dpkt.NeedData, dpkt.dpkt.UnpackError):
-            return False
-    return False
-
-
-def filter_pcap_ip_url(rule, real):
-    """
-    The helper function used in http_trace to filter insensitive flows.
+    The helper function used in http_trace to match sensitive flows.
     :param rule:
     :param real:
     :return:
@@ -107,12 +53,10 @@ def filter_pcap_ip_url(rule, real):
     ip_dst = real[0]
     url = real[1]
     if ip_dst == ip:
-        logger.debug('Found: ' + ip_dst)
-
         if data in url:
             return True
         else:
-            logger.warn('Not matched: ' + ip + ', ' + data + ', ' + url)
+            logger.debug('Not matched: ' + ip + ', ' + data + ', ' + url)
             return False
     return False
 
@@ -250,56 +194,27 @@ def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
                 copytree(root, dest_dir)
 
 
-def extract_flow_pcap_helper(http_taints, pcap_path):
-    """
-    The helper of extract_flow_pcap.
-    Given a taint record, extract the flow in the pcap file and output the pcap flow.
-    :param http_taints:
-    :param pcap_path:
-    :return:
-    """
-    try:
-        # Get filtered http requests based on the TaintDroid logs (ip, data).
-        flows = http_requests(pcap_path)
-        # Output to pcaps.
-        for flow in flows:
-            for taint in http_taints:
-                ip = taint['ip']
-                try:
-                    pkts = rdpcap(pcap_path)
-                    filter_pcap(os.path.dirname(pcap_path), pkts, flow['dest'],
-                                flow['sport'], tag=gen_tag(taint['src']))
-                except IOError as e:
-                    logger.warn(e.args)
-        return flows
-        # return PcapHandler.match_http_requests(pcap_path, TaintDroidLogProcessor.filter_pcap, [ip, data],
-        #                                      gen_pcap=True, tag=TaintDroidLogProcessor.gen_tag(taint['src']))
-    except Exception as exception:
-        logger.info(str(exception))
-        return []
-
-
-def extract_flow_pcap(http_taints, sub_dir):
+def extract_flow_pcap(target_taints, sub_dir):
     """
     Given a taint record, extract the flow in the pcap file and output the pcap flow.
     :rtype: object
-    :param http_taints:
+    :param target_taints:
     :param sub_dir:
     :return:
     """
     filter_funcs = []
     args = []
-    for http_taint in http_taints:
-        filter_funcs.append(filter_pcap_ip_url)
+    for http_taint in target_taints:
+        filter_funcs.append(match_pcap_ip_url)
         args.append([http_taint['ip'], http_taint['data'], gen_tag(http_taint['src'])])
     flows = []
-    for root, dirs, files in os.walk(sub_dir, topdown=False):
-        for filename in files:
-            if 'filter' not in filename and re.search('pcap$', filename):
-                pcap_path = os.path.join(root, filename)
-                for i in range(tcp_stream_number(pcap_path) + 1):
-                    flow = http_trace(pcap_path, i, filter_funcs=filter_funcs, args=args)
-                    flows = (flows + flow) if flow is not None else flows
+    for filename in os.listdir(sub_dir):
+        if 'filter' not in filename and filename.endswith('.pcap'):
+            pcap_path = os.path.join(sub_dir, filename)
+            for i in range(tcp_stream_number(pcap_path) + 1):
+                flow = http_trace(pcap_path, i, matching_funcs=filter_funcs, args=args)
+                if flow is not None:
+                    flows.append(flow)
     return flows
 
 
@@ -336,7 +251,7 @@ def http_taints(taints):
             data = data.replace('GET ', '') if 'GET ' in data else data
             data = data.replace('POST ', '') if 'POST ' in data else data
             data = data.replace(' ', '')
-            target_taints.append({'ip': ip, 'data': data, 'type': str(taint)})
+            target_taints.append({'ip': ip, 'data': data, 'type': str(taint), 'src': taint['src']})
     return target_taints
 
 

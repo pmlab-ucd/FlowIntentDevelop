@@ -70,11 +70,11 @@ class FlowIntentExerciser(UIExerciser):
         # UIExerciser.run_adb_cmd('shell "nohup logcat -v threadtime -s "UiDroid_Taint" > /sdcard/' + package + current_time +'.log &"')
 
         # cmd = 'adb -s ' + series + ' shell "nohup /data/local/tcpdump -w /sdcard/' + package + current_time + '.pcap &"'
-        # self.logger.info('tcpdump begins')
+        # self.log.info('tcpdump begins')
         # cmd = 'adb -s ' + series + ' shell /data/local/tcpdump -w /sdcard/' + package + '_' + current_time + '.pcap'
         UIExerciser.tcpdump_begin(package, cur_time, nohup=False)
         # os.system(cmd)
-        # self.logger.info(cmd)
+        # self.log.info(cmd)
         # process = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
 
         UIExerciser.run_adb_cmd('shell monkey -p ' + package + '_' + ' --ignore-crashes 1')
