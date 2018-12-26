@@ -5,7 +5,6 @@ If the sensitive flows are identified of the app, the app's data would be moved 
 
 The sensitive flows are located through matching IP and data written inside the TaintDroid's logs.
 """
-import json
 from shutil import copytree, rmtree
 from xml.dom.minidom import parseString
 from pcap_processor import *
@@ -184,30 +183,21 @@ def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
                             break
 
 
-def extract_flow_pcap(target_taints, sub_dir):
+def extract_flow_pcap(sub_dir, target_taints=None):
     """
     Given a taint record, extract the flow in the pcap file and output the pcap flow.
-    :rtype: dict
-    :param target_taints:
     :param sub_dir:
-    :return: flows:
+    :param target_taints:
+    :param label:
     """
-    filter_funcs = []
-    args = []
-    for http_taint in target_taints:
-        filter_funcs.append(match_pcap_ip_url)
-        args.append([http_taint['ip'], http_taint['data'], gen_tag(http_taint['src'])])
-    flows = dict()
-    for filename in os.listdir(sub_dir):
-        if 'filter' not in filename and filename.endswith('.pcap'):
-            sub_flows = []
-            pcap_path = os.path.join(sub_dir, filename)
-            for i in range(tcp_stream_number(pcap_path) + 1):
-                flow = http_trace(pcap_path, i, matching_funcs=filter_funcs, args=args)
-                if flow is not None:
-                    sub_flows.append(flow)
-            if len(sub_flows) != 0:
-                flows[os.path.splitext(filename)[0]] = sub_flows
+    flows = []
+    if target_taints is not None:
+        filter_funcs = []
+        args = []
+        for http_taint in target_taints:
+            filter_funcs.append(match_pcap_ip_url)
+            args.append([http_taint['ip'], http_taint['data'], gen_tag(http_taint['src'])])
+        flows2jsons(sub_dir, flows, filter_funcs=filter_funcs, args=args, fn_filter='filter')
     return flows
 
 
@@ -260,10 +250,7 @@ def parse_dir(work_dir):
             dir_path = os.path.join(root, dir_name)
             logger.debug(dir_path)
             taints, pkg = parse_logs(dir_path)
-            flows = extract_flow_pcap(http_taints(taints), dir_path)
-            for pcap_fn, sub_flows in flows.items():
-                with open(os.path.join(dir_path, pcap_fn + '_sens_http_flows.json'), 'w', encoding="utf8") as outfile:
-                    json.dump(sub_flows, outfile)
+            extract_flow_pcap(dir_path, target_taints=http_taints(taints))
 
 
 def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False):

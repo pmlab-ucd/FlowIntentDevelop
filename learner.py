@@ -15,7 +15,6 @@ from time import time
 from sklearn import metrics
 from sklearn.model_selection import StratifiedKFold
 from sklearn.feature_extraction.text import TfidfVectorizer
-import json
 from utils import set_logger
 
 import string
@@ -71,23 +70,6 @@ class Learner:
                 self.doc = ' '.join(tokens)
 
     @staticmethod
-    def dir2jsons(json_dir):
-        jsons = []
-        print(json_dir)
-        if json_dir is None:
-            return jsons
-        for root, dirs, files in os.walk(json_dir, topdown=False):
-            for filename in files:
-                if re.search('json$', filename):
-                    with open(os.path.join(root, filename), "r") as fin:
-                        try:
-                            jsons.append(json.load(fin))
-                        except Exception as e:
-                            print(e)
-                            # Utilities.log.error(e)
-        return jsons
-
-    @staticmethod
     def same_prefix(str_a, str_b):
         for i, c in enumerate(str_a):
             if i > 6:
@@ -131,27 +113,6 @@ class Learner:
         # train_data = train_data.toarray()
         logger.info(train_data.shape)
         return train_data, labels
-
-    @staticmethod
-    def gen_instances(pos_json_dir, neg_json_dir, simulate=False, char_wb=False):
-        pos_jsons = Learner.dir2jsons(pos_json_dir)
-        neg_jsons = Learner.dir2jsons(neg_json_dir)
-        logger.info('lenPos: ' + str(len(pos_jsons)))
-        logger.info('lenNeg: ' + str(len(neg_jsons)))
-        docs = Learner.gen_docs(pos_jsons, 1, char_wb)
-        docs = docs + (Learner.gen_docs(neg_jsons, -1, char_wb))
-        if simulate:
-            if len(neg_jsons) == 0:
-                docs = docs + Learner.simulate_flows(len(pos_jsons), 0)
-        instances = []
-        labels = []
-        for doc in docs:
-            instances.append(doc.doc)
-            labels.append(doc.label)
-            # print(doc.doc)
-            # print(doc.label)
-
-        return instances, np.array(labels)
 
     @staticmethod
     def gen_X_matrix(instances, vec=None, tf=False, ngrams_range=None):
@@ -461,20 +422,6 @@ class Learner:
         info['depth'] = depth
         logger.info(info)
         return info
-
-    @staticmethod
-    def gen_docs(jsons, label, char_wb=False):
-        docs = []
-        for flow in jsons:
-            label = label  # flow['label']
-            line = ''
-            line += flow['domain']
-            line += flow['uri']
-            try:
-                docs.append(Learner.LabelledDocs(line, label, char_wb=char_wb))
-            except Exception as e:
-                logger.warn(str(e) + ':' + str(line))
-        return docs
 
     @staticmethod
     def predict(model, vec, instances, labels=None, src_name='', model_name=''):

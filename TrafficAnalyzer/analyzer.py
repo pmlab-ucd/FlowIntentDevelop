@@ -1,11 +1,11 @@
-import json
-
-from learner import Learner
-from pcap_processor import *
-import pcap_processor
 from utils import set_logger
-import shutil
+import os
 import logging
+import sys
+from pcap_processor import flows2jsons, logger as pcap_proc_log
+from learner import Learner
+import numpy as np
+import json
 
 logger = set_logger('Analyzer')
 
@@ -30,62 +30,56 @@ class Analyzer:
             return pred_pos
 
     @staticmethod
-    def pcaps(contexts: [dict]) -> []:
+    def flow_jsons(contexts: [dict]) -> []:
         """
-        Given contexts, get the corresponding tainted pcap specified in context['dir'] field.
+        Given contexts, get the corresponding sens_http_flows.json specified in context['dir'] field.
         :param contexts:
         :return:
         """
-        fls = []
+        jsons = []
         for context in contexts:
             context_dir = context['dir']
             logger.debug(context_dir)
             for root, dirs, files in os.walk(context_dir):
                 for file in files:
-                    if 'filtered_' in file and str(file).endswith('pcap'):
-                        fls.append({'path': os.path.join(root, file), 'label': context['label']})
-        logger.info('The number of positive pcaps: %d', len(fls))
-        return fls
+                    if file.endswith('_sens_http_flows.json'):
+                        with open(os.path.join(root, file), 'r') as infile:
+                            flows = json.load(infile)
+                            for flow in flows:
+                                # The label given by the learning module of AppInspector, may not be the ground truth.
+                                flow['ctx_label'] = context['label']
+                                jsons.append(flow)
+        logger.info('The number of flows: %d', len(jsons))
+        return jsons
 
     @staticmethod
-    def pcap2jsons(pcaps, label, out_base_dir, filter_func=None, *args):
-        """
-        Generate a json file in out_dir for each given pcap.
-        :param pcaps:
-        :param label: The label given by the ML module of AppInspector, may not match the ground truth.
-        :param out_base_dir:
-        :param filter_func:
-        :param args:
-        :return:
-        """
-        filtered = []
-        for pcap in pcaps:
-            # Open up a test pcap file and print out the packets"""
-            flows = http_requests(pcap['path'], filter_flow=filter_func, args=args)
-            if flows is None:
-                continue
-            for flow in flows:
-                flow['label'] = pcap['label']  # The label of ground truth.
-                flow['path'] = pcap['path']
-                filtered.append(flow)
-        out_dir = os.path.join(out_base_dir, label)
-        if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
-        else:
-            shutil.rmtree(out_base_dir)
-            os.makedirs(out_dir)
-        logger.info('The number of the filtered flows: %d', len(filtered))
-        for flow in filtered:
-            timestamp = flow['timestamp'].replace(':', '-')
-            timestamp = timestamp.replace('.', '-')
-            timestamp = timestamp.replace(' ', '_')
-            filename = str(flow['domain'] + '_' + timestamp + '.json').replace(':', '_').replace('/', '_')
+    def gen_docs(jsons, label, char_wb=False):
+        docs = []
+        for flow in jsons:
+            line = flow['url']
             try:
-                with open(os.path.join(out_dir, filename), 'w') as outfile:
-                    json.dump(flow, outfile)
-            except UnicodeDecodeError as e:
-                    logger.warn(e)
-        return filtered
+                docs.append(Learner.LabelledDocs(line, label, char_wb=char_wb))
+            except Exception as e:
+                logger.warn(str(e) + ':' + str(line))
+        return docs
+
+    @staticmethod
+    def gen_instances(pos_flows, neg_flows, simulate=False, char_wb=False):
+        logger.info('lenPos: ' + str(len(pos_flows)))
+        logger.info('lenNeg: ' + str(len(neg_flows)))
+        docs = Analyzer.gen_docs(pos_flows, 1, char_wb)
+        docs = docs + (Analyzer.gen_docs(neg_flows, -1, char_wb))
+        if simulate:
+            if len(neg_flows) == 0:
+                docs = docs + Learner.simulate_flows(len(pos_flows), 0)
+        samples = []
+        labels = []
+        for doc in docs:
+            samples.append(doc.doc)
+            labels.append(doc.label)
+            logger.debug(str(doc.label) + ": " + doc.doc)
+
+        return samples, np.array(labels)
 
 
 def preprocess(negative_pcap_dir):
@@ -96,26 +90,27 @@ def preprocess(negative_pcap_dir):
     # Positive/Abnormal pcaps.
     contexts_dir = "../AppInspector/data/Location/"
     contexts = Analyzer.pred_pos_contexts(contexts_dir)
-    pcaps = Analyzer.pcaps(contexts)
-    Analyzer.pcap2jsons(pcaps, '1', 'data')
+    pos_flows = Analyzer.flow_jsons(contexts)
+    for flow in pos_flows:
+        flow['label'] = '1'
 
     # Negative/Normal pcaps.
-    pcaps = []
-    for root, dirs, files in os.walk(negative_pcap_dir):
-        for file in files:
-            if file.endswith('pcap'):
-                pcaps.append({'path': os.path.join(root, file), 'label': '0'})
-    Analyzer.pcap2jsons(pcaps, '0', 'data')
+    neg_flows = []
+    neg_flows = flows2jsons(negative_pcap_dir, neg_flows, label='0')
+    for flow in neg_flows:
+        # The context label is as same as ground truth since they are not labelled by AppInspector.
+        flow['cxt_label'] = '0'
+    return pos_flows, neg_flows
 
 
 if __name__ == '__main__':
     logger.setLevel(logging.INFO)
-    pcap_processor.logger.setLevel(logging.INFO)
+    pcap_proc_log.setLevel(logging.INFO)
     neg_pcap_dir = sys.argv[1]
     logger.info('The negative pcap stored at: %s', neg_pcap_dir)
     preprocess(neg_pcap_dir)
 
-    instances, y = Learner.gen_instances(os.path.join('data', '1'),
-                                         os.path.join('data', '0'), char_wb=False, simulate=False)
+    instances, y = Analyzer.gen_instances(os.path.join('data', '1'),
+                                          os.path.join('data', '0'), char_wb=False, simulate=False)
     X, feature_names, vec = Learner.gen_X_matrix(instances, tf=False)
     Learner.train_classifier(Learner.train_tree, X, y, 5, dict(), 'tree')

@@ -1,8 +1,9 @@
 __author__ = 'hao'
 
-from scapy.all import *
 from learner import Learner
 from utils import set_logger
+import os
+import json
 
 logger = set_logger('pcap_processor', 'INFO')
 
@@ -108,7 +109,7 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
                     continue
                 else:
                     taint = args[i][2]
-    if taint == '':
+    if matching_funcs is not None and taint == '':
         return None
     intervals = []
     for i in range(1, len(epochs)):
@@ -123,9 +124,35 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
     flow['url'] = url
     flow['label'] = label
     flow['taint'] = taint
+    flow['pcap'] = pcap + '_steam_' + str(stream_index)
 
     logger.debug(flow)
     return flow
+
+
+def flows2jsons(sub_dir, flows, label=None, filter_funcs=None, args=None, fn_filter='filter'):
+    """
+    Generate the jsons from the flows.
+    :param sub_dir:
+    :param flows:
+    :param label:
+    :param filter_funcs:
+    :param args:
+    :param fn_filter:
+    """
+    for filename in os.listdir(sub_dir):
+        if fn_filter not in filename and filename.endswith('.pcap'):
+            sub_flows = []
+            pcap_path = os.path.join(sub_dir, filename)
+            for i in range(tcp_stream_number(pcap_path) + 1):
+                flow = http_trace(pcap_path, i, label=label, matching_funcs=filter_funcs, args=args)
+                if flow is not None:
+                    sub_flows.append(flow)
+            if len(sub_flows) != 0:
+                with open(os.path.join(sub_dir, os.path.splitext(filename)[0] + '_sens_http_flows.json'), 'w',
+                          encoding="utf8") as outfile:
+                    json.dump(sub_flows, outfile)
+                flows.extend(sub_flows)
 
 
 if __name__ == '__main__':
