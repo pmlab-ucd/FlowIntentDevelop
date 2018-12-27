@@ -31,11 +31,11 @@ def gen_tag(src):
     if 'ContactsProvider' in src:
         tag += 'Address_'
     if 'Microphone Input' in src:
-        tag += 'microphone_'
+        tag += 'Microphone_'
     if 'accelerometer' in src:
-        tag += 'accelerometer_'
+        tag += 'Accelerometer_'
     if 'camera' in src:
-        tag += 'camera'
+        tag += 'Camera'
     if tag.endswith('_'):
         tag = tag[:-1]
     return tag
@@ -63,14 +63,14 @@ def match_pcap_ip_url(rule, real):
 
 def parse_taint_json_log(log_file, pkg):
     """
-    Parse the TaintDroid logs (jsons) and return a tainted record.
+    Parse the TaintDroid logs (jsons) and return a list of recorded taints.
     :param log_file:
     :param pkg:
     :return:
     """
     res = []
     try:
-        with open(log_file) as data_file:
+        with open(log_file, 'r') as data_file:
             taints = json.load(data_file)
             for taint in taints:
                 if taint['process_name'] in pkg:
@@ -78,6 +78,53 @@ def parse_taint_json_log(log_file, pkg):
     except Exception as e:
         logger.warn(str(e))
     return res
+
+
+def parse_taint_old_log(log_file, pkg):
+    """
+    Parse the TaintDroid logs (old version, .log) and return a list of recorded taints.
+    :param log_file:
+    :param pkg:
+    :return:
+    """
+    file = open(log_file, 'r')  # open TaintDroid report
+    lines = file.readlines()
+    taints = []
+    for line in lines:
+        if pkg in line and 'SSL' not in line:
+            taint = dict()
+            line = line.split(', ')
+            taint['dst'] = line[1]
+            taint['message'] = 'data=' + line[len(line) - 2].split(' HTTP')[0]
+            taint['channel'] = 'HTTP'
+            srcs = []
+            for i in range(2, len(line) - 3):
+                srcs.append(line[i])
+            taint['src'] = srcs
+            taints.append(taint)
+    return taints
+
+
+def http_taints(taints):
+    target_taints = []
+    for taint in taints:
+        if 'HTTP' in taint['channel']:
+            logger.debug(taint)
+            ip = taint['dst']
+            if 'data=' in taint['message']:
+                data = taint['message'].split('data=')[1]
+            elif 'data' in taint['message']:
+                data = taint['message'].split('data')[1]
+            else:
+                logger.warn('Cannot extract content from the taint message!')
+                continue
+            data = data.split('HTTP')[0]
+            data = data.replace('[', '').replace(']', '')
+            data = data.replace('GET ', '') if 'GET ' in data else data
+            data = data.replace('POST ', '') if 'POST ' in data else data
+            data = data.replace(' ', '')
+            target_taints.append({'ip': ip, 'data': data, 'type': str(taint), 'src': taint['src']})
+    return target_taints
 
 
 def parse_exerciser_log(log_file):
@@ -188,7 +235,6 @@ def extract_flow_pcap(sub_dir, target_taints=None):
     Given a taint record, extract the flow in the pcap file and output the pcap flow.
     :param sub_dir:
     :param target_taints:
-    :param label:
     """
     flows = []
     if target_taints is not None:
@@ -203,7 +249,7 @@ def extract_flow_pcap(sub_dir, target_taints=None):
 
 def parse_logs(sub_dir):
     """
-    Parse json log and extract the taint info.
+    Parse json/log and extract the taint info.
     :param sub_dir:
     :return:
     """
@@ -212,30 +258,13 @@ def parse_logs(sub_dir):
     taints = []
     for root, dirs, files in os.walk(sub_dir, topdown=False):
         for filename in files:
-            if filename.endswith('.json'):
-                taints += parse_taint_json_log(os.path.join(root, filename), pkg)
+            file = os.path.join(root, filename)
+            if filename.endswith('.json') and 'sens_' not in filename:
+                taints += parse_taint_json_log(file, pkg)
+            elif filename.endswith(
+                    '.log') and 'UiDroid-Console' not in filename and 'UIExerciser_FlowIntent_FP_PY' not in filename:
+                taints += parse_taint_old_log(file, pkg)
     return taints, pkg
-
-
-def http_taints(taints):
-    target_taints = []
-    for taint in taints:
-        if 'HTTP' in taint['channel']:
-            logger.debug(taint)
-            ip = taint['dst']
-            if 'data=' in taint['message']:
-                data = taint['message'].split('data=')[1]
-            elif 'data' in taint['message']:
-                data = taint['message'].split('data')[1]
-            else:
-                logger.warn('Cannot extract content from the taint message!')
-                continue
-            data = data.replace('[', '').replace(']', '')
-            data = data.replace('GET ', '') if 'GET ' in data else data
-            data = data.replace('POST ', '') if 'POST ' in data else data
-            data = data.replace(' ', '')
-            target_taints.append({'ip': ip, 'data': data, 'type': str(taint), 'src': taint['src']})
-    return target_taints
 
 
 def parse_dir(work_dir):
@@ -279,14 +308,17 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("-i", "--in_dir", dest="in_dir",
                         help="the full path of base dir of input directory")
-    parser.add_argument("-o", "--out_dir", dest="out_dir",
+    parser.add_argument("-o", "--out_dir", dest="out_dir", default=None,
                         help="the full path of base dir of output directory")
-    parser.add_argument("-t", "--taint", dest="taint",
+    parser.add_argument("-t", "--taint", dest="taint", default=None,
                         help="taint type, such as Location")
-    parser.add_argument("-d", "--dataset", dest="dataset",
+    parser.add_argument("-d", "--dataset", dest="dataset", default=None,
                         help="the dataset name (sub dir of the base dir)")
     parser.add_argument("-s", "--sub", dest="sub_dir", default=False,
                         help="whether dataset has sub dir.")
     args = parser.parse_args()
-    # Example: pcap_tdroid_matcher.py -i test/data -o test/data/ground/ -t Location -d raw
-    match(args.in_dir, args.out_dir, args.taint, args.dataset, has_sub_dataset=args.sub_dir)
+    if args.out_dir is None:
+        parse_dir(args.in_dir)
+    else:
+        # Example: pcap_tdroid_matcher.py -i test/data -o test/data/ground/ -t Location -d raw
+        match(args.in_dir, args.out_dir, args.taint, args.dataset, has_sub_dataset=args.sub_dir)
