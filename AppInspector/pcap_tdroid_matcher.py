@@ -10,6 +10,7 @@ from xml.dom.minidom import parseString
 from pcap_processor import *
 from utils import set_logger
 from argparse import ArgumentParser
+from multiprocessing import Manager, Pool
 
 logger = set_logger('TaintDroidLogProcessor', 'INFO')
 
@@ -103,23 +104,27 @@ def parse_taint_old_log(log_file, pkg, taint_type=None):
     :param taint_type:
     :return:
     """
-    file = open(log_file, 'r')  # open TaintDroid report
-    lines = file.readlines()
     taints = []
-    for line in lines:
-        if pkg in line and 'SSL' not in line:
-            taint = dict()
-            line = line.split(', ')
-            srcs = []
-            for i in range(2, len(line) - 3):
-                srcs.append(line[i])
-            taint['src'] = srcs
-            if skip_by_taint_type(taint, taint_type):
-                continue
-            taint['dst'] = line[1]
-            taint['message'] = 'data=' + line[len(line) - 2].split(' HTTP')[0]
-            taint['channel'] = 'HTTP'
-            taints.append(taint)
+    try:
+        file = open(log_file, 'r', errors='ignore')  # open TaintDroid report
+        lines = file.readlines()
+        for line in lines:
+            if pkg in line and 'SSL' not in line:
+                taint = dict()
+                line = line.split(', ')
+                srcs = []
+                for i in range(2, len(line) - 3):
+                    srcs.append(line[i])
+                taint['src'] = srcs
+                if skip_by_taint_type(taint, taint_type):
+                    continue
+                taint['dst'] = line[1]
+                taint['message'] = 'data=' + line[len(line) - 2].split(' HTTP')[0]
+                taint['channel'] = 'HTTP'
+                taints.append(taint)
+    except UnicodeDecodeError as e:
+        logger.warn('Error in decoding ' + log_file)
+        logger.warn(e)
     return taints
 
 
@@ -274,7 +279,7 @@ def parse_logs(sub_dir, taint=None):
     :return:
     """
     pkg = apk_name(sub_dir)
-    logger.info(pkg)
+    logger.info(pkg + ", " + sub_dir)
     taints = []
     for root, dirs, files in os.walk(sub_dir, topdown=False):
         for filename in files:
@@ -287,23 +292,33 @@ def parse_logs(sub_dir, taint=None):
     return taints, pkg
 
 
-def parse_dir(work_dir, taint=None):
+def parse_dir(work_dir, taint=None, visited=None):
     """
     Parse the given dir and for each sub dir (an app's data), extract the detected taints from json, then use the taints
      to match the flows in the pcap.
     :param work_dir:
     :param taint:
+    :param visited:
     :return:
     """
     for root, dirs, files in os.walk(work_dir, topdown=False):
         for dir_name in dirs:
             dir_path = os.path.join(root, dir_name)
+            if visited is not None:
+                if dir_path in visited:
+                    continue
+                else:
+                    visited[dir_path] = 1
             logger.debug(dir_path)
             taints, pkg = parse_logs(dir_path, taint=taint)
             extract_flow_pcap(dir_path, target_taints=http_taints(taints))
 
 
-def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False):
+def parse_dir_multi_run_wrapper(args):
+    return parse_dir(*args)
+
+
+def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False, proc_num=4):
     """
     The main procedure of pcap_tdroid_mather.py.
     :param base_dir: The base dir of input dir.
@@ -311,14 +326,21 @@ def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False):
     :param taint_type: The taint type, such as Location, IMEI, etc. See "gen_tag(src)".
     :param dataset: The dataset name (sub dir of the base dir).
     :param has_sub_dataset: Whether dataset has sub dir.
+    :param proc_num: The number of processes used in multiprocessing.
     """
+    if dataset is not None:
+        base_dir = os.path.join(base_dir, dataset)
+    # Derive the interested flows from pcaps based on the taint src, and output the corresponding jsons.
+    visited = Manager().dict()
 
-    base_dir = os.path.join(base_dir, dataset)
+    p = Pool(proc_num)
+    p.map(parse_dir_multi_run_wrapper, [(base_dir, taint_type, visited)] * proc_num)
+    p.close()
+
+    if out_dir is None:
+        return
     out_dir = os.path.join(out_dir, taint_type)
     out_dir = os.path.join(out_dir, dataset)
-
-    # Derive the interested flows from pcaps based on the taint src, and output the corresponding jsons.
-    parse_dir(base_dir)
     # Copy the dir to the destination dir (the dir for labelling ground truth) based on the taint.
     organize_dir_by_taint(base_dir, out_dir, taint_type, has_sub_dataset)
     # Remove the Activities that do not contain the taint or meaningful UI.
@@ -327,19 +349,18 @@ def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("-i", "--in_dir", dest="in_dir",
+    parser.add_argument("-i", "--indir", dest="in_dir",
                         help="the full path of base dir of input directory")
-    parser.add_argument("-o", "--out_dir", dest="out_dir", default=None,
+    parser.add_argument("-o", "--outdir", dest="out_dir", default=None,
                         help="the full path of base dir of output directory")
     parser.add_argument("-t", "--taint", dest="taint",
                         help="taint type, such as Location")
     parser.add_argument("-d", "--dataset", dest="dataset", default=None,
                         help="the dataset name (sub dir of the base dir)")
     parser.add_argument("-s", "--sub", dest="sub_dir", default=False,
-                        help="whether dataset has sub dir.")
+                        help="whether dataset has sub dir")
+    parser.add_argument("-p", "--proc", dest="proc_num", default=4,
+                        help="the number of processes used in multiprocessing")
     args = parser.parse_args()
-    if args.out_dir is None:
-        parse_dir(args.in_dir, taint=args.taint)
-    else:
-        # Example: pcap_tdroid_matcher.py -i test/data -o test/data/ground/ -t Location -d raw
-        match(args.in_dir, args.out_dir, args.taint, args.dataset, has_sub_dataset=args.sub_dir)
+    # Example: pcap_tdroid_matcher.py -i test/data -o test/data/ground/ -t Location -d raw
+    match(args.in_dir, args.out_dir, args.taint, args.dataset, has_sub_dataset=args.sub_dir, proc_num=args.proc_num)
