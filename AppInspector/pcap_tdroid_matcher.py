@@ -267,7 +267,9 @@ def extract_flow_pcap(sub_dir, target_taints=None):
             filter_funcs.append(match_pcap_ip_url)
             args.append([http_taint['ip'], http_taint['data'], gen_tag(http_taint['src'])])
         flows2jsons(sub_dir, flows, filter_funcs=filter_funcs, args=args, fn_filter='filter')
-        logger.info(str(len(flows)) + ' ' + str(flows))
+        logger.debug(str(len(flows)) + ' ' + str(flows))
+        if len(flows) == 0:
+            logger.warn(sub_dir + ' does not contain any interested taint!')
     return flows
 
 
