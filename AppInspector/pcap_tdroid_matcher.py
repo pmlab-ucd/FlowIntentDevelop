@@ -84,7 +84,7 @@ def parse_taint_json_log(log_file, pkg, taint_type=None):
     """
     res = []
     try:
-        with open(log_file, 'r') as data_file:
+        with open(log_file, 'r', encoding="utf8", errors='ignore') as data_file:
             taints = json.load(data_file)
             for taint in taints:
                 if taint['process_name'] in pkg:
@@ -157,7 +157,7 @@ def parse_exerciser_log(log_file):
     :return:
     """
     if os.path.exists(log_file):
-        with open(log_file) as lines:
+        with open(log_file, encoding="utf8", errors='ignore') as lines:
             for line in lines:
                 if 'pkg:' in line:
                     return line.split('pkg:')[1].replace('\n', '')
@@ -185,7 +185,7 @@ def clean_folder(work_dir: str) -> None:
                 # Clean the hierarchy xml (and other relevant data) whose content does not contain any app UI.
                 xml_path = os.path.join(root, fn)
                 try:
-                    with open(xml_path, 'rb') as f:
+                    with open(xml_path, 'rb', encoding="utf8", errors='ignore') as f:
                         others = []
                         android = False
                         data = f.read()
@@ -235,7 +235,7 @@ def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
             # If the given taint type is identified in flows, means it is a target pkg.
             if filename.endswith('_sens_http_flows.json'):
                 file_path = os.path.join(root, filename)
-                with open(file_path, 'r') as infile:
+                with open(file_path, 'r', encoding="utf8", errors='ignore') as infile:
                     flows = json.load(infile)
                     for flow in flows:
                         if taint in flow['taint']:

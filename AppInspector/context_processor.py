@@ -50,7 +50,7 @@ class ContextProcessor:
         :param reset_out_dir:
         """
         # Load the contexts stored in the hard disk.
-        # instances_dir_name = hashlib.md5(root_dir.encode('utf-8')).hexdigest()
+        # instances_dir_name = hashlib.md5(root.encode('utf-8')).hexdigest()
         # Output dir
         contexts_dir = os.path.join('data', os.path.basename(root_dir))
         pos_dir = os.path.join(root_dir, pos_dir_name)
@@ -153,12 +153,12 @@ class ContextProcessor:
 
 
 if __name__ == '__main__':
-    root_dir = sys.argv[len(sys.argv) - 1]
+    root = sys.argv[len(sys.argv) - 1]
     reset = False
     if len(sys.argv) > 1:
         reset = True if '-r' in sys.argv else reset
     logger.setLevel(logging.DEBUG)
-    logger.info('The data stored at: ', root_dir)
+    logger.info('The data stored at: ', root)
     learner.logger.setLevel(logging.INFO)
-    samples, samples_dir = ContextProcessor.process(root_dir, reset_out_dir=reset)
+    samples, samples_dir = ContextProcessor.process(root, reset_out_dir=reset)
     ContextProcessor.train(samples, samples_dir)

@@ -1,5 +1,9 @@
 import math
 
+from utils import set_logger
+
+logger = set_logger('stats', 'INFO')
+
 
 def median(x):
     sorted_x = sorted(x)
@@ -23,7 +27,8 @@ def skewness(x):
     m = mean(x)
     sd = s_dev(x)
     if sd == 0:
-        raise Exception('sd is 0!')
+        logger.warn('sd is 0!')
+        return 0.0
     else:
         for i in range(0, a):
             cube_x.append(((x[i] - m) / float(sd)) * ((x[i] - m) / float(sd)) * ((x[i] - m) / float(sd)))

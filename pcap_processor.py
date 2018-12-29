@@ -149,6 +149,7 @@ def flows2jsons(sub_dir, flows, label=None, filter_funcs=None, args=None, fn_fil
                 if flow is not None:
                     sub_flows.append(flow)
             if len(sub_flows) != 0:
+                # Although the name contains "sens", they may not be sensitive. Just use it for convenient.
                 with open(os.path.join(sub_dir, os.path.splitext(filename)[0] + '_sens_http_flows.json'), 'w',
                           encoding="utf8") as outfile:
                     json.dump(sub_flows, outfile)

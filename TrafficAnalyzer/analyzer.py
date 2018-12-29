@@ -46,17 +46,18 @@ class Analyzer:
                         with open(os.path.join(root, file), 'r') as infile:
                             flows = json.load(infile)
                             for flow in flows:
-                                # The label given by the learning module of AppInspector, may not be the ground truth.
-                                flow['ctx_label'] = context['label']
+                                # The ground truth label, which is defined by "context" label.
+                                flow['real_label'] = context['label']
                                 jsons.append(flow)
         logger.info('The number of flows: %d', len(jsons))
         return jsons
 
     @staticmethod
-    def gen_docs(jsons, label, char_wb=False):
+    def gen_docs(jsons, char_wb=False):
         docs = []
         for flow in jsons:
             line = flow['url']
+            label = 1 if flow['label'] == '1' else -1
             try:
                 docs.append(Learner.LabelledDocs(line, label, char_wb=char_wb))
             except Exception as e:
@@ -67,8 +68,8 @@ class Analyzer:
     def gen_instances(pos_flows, neg_flows, simulate=False, char_wb=False):
         logger.info('lenPos: ' + str(len(pos_flows)))
         logger.info('lenNeg: ' + str(len(neg_flows)))
-        docs = Analyzer.gen_docs(pos_flows, 1, char_wb)
-        docs = docs + (Analyzer.gen_docs(neg_flows, -1, char_wb))
+        docs = Analyzer.gen_docs(pos_flows, char_wb)
+        docs = docs + (Analyzer.gen_docs(neg_flows, char_wb))
         if simulate:
             if len(neg_flows) == 0:
                 docs = docs + Learner.simulate_flows(len(pos_flows), 0)
@@ -92,14 +93,15 @@ def preprocess(negative_pcap_dir):
     contexts = Analyzer.pred_pos_contexts(contexts_dir)
     pos_flows = Analyzer.flow_jsons(contexts)
     for flow in pos_flows:
+        # The label given by the prediction of AppInspector, may not be as same as the ground truth.
         flow['label'] = '1'
 
     # Negative/Normal pcaps.
     neg_flows = []
     neg_flows = flows2jsons(negative_pcap_dir, neg_flows, label='0')
     for flow in neg_flows:
-        # The context label is as same as ground truth since they are not labelled by AppInspector.
-        flow['cxt_label'] = '0'
+        # The context label is as same as the ground truth since they are not labelled by AppInspector.
+        flow['real_label'] = '0'
     return pos_flows, neg_flows
 
 
