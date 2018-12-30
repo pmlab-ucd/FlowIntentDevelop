@@ -316,7 +316,7 @@ def parse_dir(work_dir, taint=None, visited=None):
             extract_flow_pcap(dir_path, target_taints=http_taints(taints))
 
 
-def parse_dir_multi_run_wrapper(args):
+def parse_dir_mp_wrapper(args):
     return parse_dir(*args)
 
 
@@ -336,7 +336,7 @@ def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False, proc_nu
     visited = Manager().dict()
 
     p = Pool(proc_num)
-    p.map(parse_dir_multi_run_wrapper, [(base_dir, taint_type, visited)] * proc_num)
+    p.map(parse_dir_mp_wrapper, [(base_dir, taint_type, visited)] * proc_num)
     p.close()
 
     if out_dir is None:
@@ -352,11 +352,11 @@ def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False, proc_nu
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("-i", "--indir", dest="in_dir",
-                        help="the full path of base dir of input directory")
+                        help="the full path of the base dir of input directory")
     parser.add_argument("-o", "--outdir", dest="out_dir", default=None,
-                        help="the full path of base dir of output directory")
+                        help="the full path of the base dir of output directory")
     parser.add_argument("-t", "--taint", dest="taint",
-                        help="taint type, such as Location")
+                        help="the taint type, such as Location")
     parser.add_argument("-d", "--dataset", dest="dataset", default=None,
                         help="the dataset name (sub dir of the base dir)")
     parser.add_argument("-s", "--sub", dest="sub_dir", default=False,

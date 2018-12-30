@@ -133,6 +133,22 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
     return flow
 
 
+def flows2json(sub_dir, filename, label=None, filter_funcs=None, args=None,
+               fn_filter='filter', json_ext='_sens_http_flows.json'):
+    if fn_filter not in filename and filename.endswith('.pcap'):
+        sub_flows = []
+        pcap_path = os.path.join(sub_dir, filename)
+        for i in range(tcp_stream_number(pcap_path) + 1):
+            flow = http_trace(pcap_path, i, label=label, matching_funcs=filter_funcs, args=args)
+            if flow is not None:
+                sub_flows.append(flow)
+        if len(sub_flows) != 0:
+            with open(os.path.join(sub_dir, os.path.splitext(filename)[0] + json_ext), 'w',
+                      encoding="utf8") as outfile:
+                json.dump(sub_flows, outfile)
+            return sub_flows
+
+
 def flows2jsons(sub_dir, flows, label=None, filter_funcs=None, args=None,
                 fn_filter='filter', json_ext='_sens_http_flows.json'):
     """
@@ -147,17 +163,8 @@ def flows2jsons(sub_dir, flows, label=None, filter_funcs=None, args=None,
     """
     for filename in os.listdir(sub_dir):
         if fn_filter not in filename and filename.endswith('.pcap'):
-            sub_flows = []
-            pcap_path = os.path.join(sub_dir, filename)
-            for i in range(tcp_stream_number(pcap_path) + 1):
-                flow = http_trace(pcap_path, i, label=label, matching_funcs=filter_funcs, args=args)
-                if flow is not None:
-                    sub_flows.append(flow)
-            if len(sub_flows) != 0:
-                # Although the name contains "sens", they may not be sensitive. Just use it for convenient.
-                with open(os.path.join(sub_dir, os.path.splitext(filename)[0] + json_ext), 'w',
-                          encoding="utf8") as outfile:
-                    json.dump(sub_flows, outfile)
+            sub_flows = flows2json(sub_dir, filename, label, filter_funcs, args, fn_filter, json_ext)
+            if sub_flows is not None:
                 flows.extend(sub_flows)
 
 
