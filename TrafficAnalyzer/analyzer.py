@@ -98,7 +98,7 @@ def preprocess(negative_pcap_dir):
 
     # Negative/Normal pcaps.
     neg_flows = []
-    neg_flows = flows2jsons(negative_pcap_dir, neg_flows, label='0')
+    neg_flows = flows2jsons(negative_pcap_dir, neg_flows, label='0', json_ext='_http_flows.json')
     for flow in neg_flows:
         # The context label is as same as the ground truth since they are not labelled by AppInspector.
         flow['real_label'] = '0'
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     pcap_proc_log.setLevel(logging.INFO)
     neg_pcap_dir = sys.argv[1]
-    logger.info('The negative pcap stored at: %s', neg_pcap_dir)
+    logger.info('The negative pcaps are stored at: %s', neg_pcap_dir)
     preprocess(neg_pcap_dir)
 
     instances, y = Analyzer.gen_instances(os.path.join('data', '1'),

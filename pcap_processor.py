@@ -69,7 +69,6 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
                                                                             '-e http.request.full_uri ' \
                                                                             '-e http.content_length ' \
                                                                             '-e http.response '
-    flow = dict()
     lines = os.popen(cmd).readlines()
     logger.debug(cmd)
     i = 0
@@ -100,6 +99,9 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
             else:
                 down_frames.append(frame_len)
             url = values[5] if values[5] is not '' else url
+    if url == '':
+        # Not a proper http flow, may only be a tcp stream, or be truncated invalidly.
+        return None
     taint = ''
     if matching_funcs is not None:
         # Iterate over the matching funcs (and the corresponding args) and see whether this trace matches any func.
@@ -114,6 +116,7 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
     intervals = []
     for i in range(1, len(epochs)):
         intervals.append(epochs[i] - epochs[i - 1])
+    flow = dict()
     flow['frame_num'] = i
     flow['up_count'] = up_count
     flow['non_http_num'] = non_http_tcp_num
@@ -130,7 +133,8 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
     return flow
 
 
-def flows2jsons(sub_dir, flows, label=None, filter_funcs=None, args=None, fn_filter='filter'):
+def flows2jsons(sub_dir, flows, label=None, filter_funcs=None, args=None,
+                fn_filter='filter', json_ext='_sens_http_flows.json'):
     """
     Generate the jsons from the flows.
     :param sub_dir:
@@ -139,6 +143,7 @@ def flows2jsons(sub_dir, flows, label=None, filter_funcs=None, args=None, fn_fil
     :param filter_funcs:
     :param args:
     :param fn_filter:
+    :param json_ext:
     """
     for filename in os.listdir(sub_dir):
         if fn_filter not in filename and filename.endswith('.pcap'):
@@ -150,7 +155,7 @@ def flows2jsons(sub_dir, flows, label=None, filter_funcs=None, args=None, fn_fil
                     sub_flows.append(flow)
             if len(sub_flows) != 0:
                 # Although the name contains "sens", they may not be sensitive. Just use it for convenient.
-                with open(os.path.join(sub_dir, os.path.splitext(filename)[0] + '_sens_http_flows.json'), 'w',
+                with open(os.path.join(sub_dir, os.path.splitext(filename)[0] + json_ext), 'w',
                           encoding="utf8") as outfile:
                     json.dump(sub_flows, outfile)
                 flows.extend(sub_flows)
