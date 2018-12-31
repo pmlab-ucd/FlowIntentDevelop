@@ -13,7 +13,7 @@ logger = set_logger('context')
 
 class Context:
     """
-    App-level context of each running instances collected.
+    App-level context of each running text_fea collected.
     """
 
     word_topics = {'topic_health': [u'健身', u'运动', u'健康', u'体重', u'身体', u'锻炼'],

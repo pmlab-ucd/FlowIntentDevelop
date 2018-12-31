@@ -42,7 +42,7 @@ class ContextProcessor:
     @staticmethod
     def process(root_dir, pos_dir_name='1', neg_dir_name='0', reset_out_dir=False):
         """
-        Given the dataset of legal and illegal sharing instances
+        Given the dataset of legal and illegal sharing text_fea
         Perform cross-validation on them
         :param root_dir:
         :param pos_dir_name:
@@ -88,29 +88,29 @@ class ContextProcessor:
                                 instances.append(instance)
             with open(os.path.join(contexts_dir, 'contexts.json'), 'w', encoding="utf8") as outfile:
                 json.dump(instances_dict, outfile)
-                # pd.Series(instances).to_json(outfile, orient='values')
+                # pd.Series(text_fea).to_json(outfile, orient='values')
         return instances, contexts_dir
 
     @staticmethod
     def train(instances, contexts_dir):
-        # Convert the instances into the <String, label> pairs.
+        # Convert the text_fea into the <String, label> pairs.
         docs, y = ContextProcessor.docs(instances)
         # Transform the strings into the np array.
-        train_data, voc, vec = Learner.gen_X_matrix(docs)
+        train_data, voc, vec = Learner.LabelledDocs.vectorize(docs)
         logger.info('neg: ' + str(len(np.where(y == 0)[0])))
         logger.info('pos: ' + str(len(np.where(y == 1)[0])))
         # Split the data set into 10 folds.
         folds = Learner.n_folds(train_data, y, fold=10)  # [Fold(f) for f in Learner.n_folds(train_data, y, fold=10)]
         """
-        # Perform the init classification and check the misclassified instances
+        # Perform the init classification and check the misclassified text_fea
         clf = DecisionTreeClassifier(class_weight='balanced')
         res = Learner.cross_validation(clf, folds)
         for fold in res['fold']:
             for item in fold['fp_item']:
-                instance = instances[item]
+                instance = text_fea[item]
                 ContextProcessor.log.info("FP:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
             for item in fold['fn_item']:
-                instance = instances[item]
+                instance = text_fea[item]
                 ContextProcessor.log.info("FN:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
         
         clf = MultinomialNB()

@@ -53,17 +53,68 @@ class Learner:
                 stemmed.append(stemmer.stem(item))
             return stemmed
 
-        def tokenize(self, text):
+        @staticmethod
+        def vectorize(instances, vec=None, tf=False, ngrams_range=None):
+            # Initialize the "CountVectorizer" object, which is scikit-learn's
+            # bag of words tool.
+            if vec is not None:
+                train_data = vec.transform(instances)
+                vocab = vec.get_feature_names()
+                return train_data, vocab, vec
+            if not tf:
+                if ngrams_range is None:
+                    vectorizer = StemmedCountVectorizer(analyzer="word",
+                                                        tokenizer=None,
+                                                        preprocessor=None,
+                                                        stop_words=['http'])
+                else:
+                    vectorizer = StemmedCountVectorizer(analyzer='char_wb',
+                                                        tokenizer=None,
+                                                        preprocessor=None,
+                                                        stop_words=['http'],
+                                                        ngram_range=ngrams_range)
+            else:
+                if ngrams_range is None:
+                    vectorizer = StemmedTfidfVectorizer(analyzer="word",
+                                                        tokenizer=None,
+                                                        preprocessor=None,
+                                                        stop_words=['http'])
+                else:
+                    vectorizer = StemmedTfidfVectorizer(analyzer='char_wb',
+                                                        tokenizer=None,
+                                                        preprocessor=None,
+                                                        stop_words=None,
+                                                        ngram_range=ngrams_range)
+            # fit_transform() does two functions: First, it fits the model
+            # and learns the vocabulary; second, it transforms our training data
+            # into feature vectors. The input to fit_transform should be a list of
+            # strings.
+            train_data = vectorizer.fit_transform(instances)
+
+            # Numpy arrays are easy to work with, so convert the result to an
+            # array
+            # train_data = train_data.toarray()
+            logger.info(train_data.shape)
+            # Take a look at the words in the vocabulary
+            vocab = vectorizer.get_feature_names()
+            # log.info(vocab)
+            # train_data, labels = Learner.feature_filter_by_prefix(vocab, docs)
+
+            return train_data, vocab, vectorizer
+
+        @staticmethod
+        def tokenize(text):
             vectorizer = CountVectorizer(analyzer='word')
             vectorizer.fit_transform([text])
             tokens = vectorizer.get_feature_names()
             # stems = self.stem_tokens(tokens, stemmer)
             return tokens
 
-        def __init__(self, doc, label, real_label=None, char_wb=False):
+        def __init__(self, doc, label, numeric_features=None, real_label=None, char_wb=False):
             self.doc = doc
             self.label = label
             self.real_label = real_label
+            self.numeric_features = numeric_features
             tokens = self.tokenize(doc)
             if char_wb:
                 self.doc = ''.join(tokens)
@@ -114,55 +165,6 @@ class Learner:
         # train_data = train_data.toarray()
         logger.info(train_data.shape)
         return train_data, labels
-
-    @staticmethod
-    def gen_X_matrix(instances, vec=None, tf=False, ngrams_range=None):
-        # Initialize the "CountVectorizer" object, which is scikit-learn's
-        # bag of words tool.
-        if vec is not None:
-            train_data = vec.transform(instances)
-            vocab = vec.get_feature_names()
-            return train_data, vocab, vec
-        if not tf:
-            if ngrams_range is None:
-                vectorizer = StemmedCountVectorizer(analyzer="word",
-                                                    tokenizer=None,
-                                                    preprocessor=None,
-                                                    stop_words=['http'])
-            else:
-                vectorizer = StemmedCountVectorizer(analyzer='char_wb',
-                                                    tokenizer=None,
-                                                    preprocessor=None,
-                                                    stop_words=['http'],
-                                                    ngram_range=ngrams_range)
-        else:
-            if ngrams_range is None:
-                vectorizer = StemmedTfidfVectorizer(analyzer="word",
-                                                    tokenizer=None,
-                                                    preprocessor=None,
-                                                    stop_words=['http'])
-            else:
-                vectorizer = StemmedTfidfVectorizer(analyzer='char_wb',
-                                                    tokenizer=None,
-                                                    preprocessor=None,
-                                                    stop_words=None,
-                                                    ngram_range=ngrams_range)
-        # fit_transform() does two functions: First, it fits the model
-        # and learns the vocabulary; second, it transforms our training data
-        # into feature vectors. The input to fit_transform should be a list of
-        # strings.
-        train_data = vectorizer.fit_transform(instances)
-
-        # Numpy arrays are easy to work with, so convert the result to an
-        # array
-        # train_data = train_data.toarray()
-        logger.info(train_data.shape)
-        # Take a look at the words in the vocabulary
-        vocab = vectorizer.get_feature_names()
-        # log.info(vocab)
-        # train_data, labels = Learner.feature_filter_by_prefix(vocab, docs)
-
-        return train_data, vocab, vectorizer
 
     @staticmethod
     def ocsvm(train_data, labels, n_fold=0):
@@ -458,7 +460,7 @@ class Learner:
                 count_vectorizer = StemmedCountVectorizer(analyzer='word', vocabulary=dict, ngram_range=ngram_range)
             else:
                 count_vectorizer = StemmedCountVectorizer(analyzer="word", vocabulary=dict)
-        X_new = count_vectorizer.fit_transform(instances)
+        X_new = count_vectorizer.fit_transform(text_fea)
         # cPickle.dump(count_vectorizer.vocabulary, open(output_dir + '/' + "vocabulary.pkl", "wb"))
         '''
         return X_new, feature_names, ch2
@@ -522,7 +524,7 @@ class Learner:
     def voting(clfs, X, y, folds):
         """
         Let each classifier train on the n-1 folds and predict on the rest fold.
-        Then for each fold, pick the instances where all clfs say pos/neg.
+        Then for each fold, pick the text_fea where all clfs say pos/neg.
         :param clfs:
         :param X:
         :param y:

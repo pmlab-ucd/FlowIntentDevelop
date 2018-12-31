@@ -61,31 +61,41 @@ class Analyzer:
             line = flow['url']
             label = 1 if flow['label'] == '1' else 0
             real_label = 1 if flow['real_label'] == '1' else 0
+            numeric = [flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
+                       flow['up_stat'], flow['down_stat']]
             try:
-                docs.append(Learner.LabelledDocs(line, label, real_label, char_wb=char_wb))
+                docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb))
             except Exception as e:
-                logger.warn(str(e) + ':' + str(line))
+                logger.warn(str(e) + ': ' + line)
         return docs
 
     @staticmethod
     def gen_instances(positive_flows, negative_flows, simulate=False, char_wb=False):
-        logger.info('lenPos: ' + str(len(positive_flows)))
-        logger.info('lenNeg: ' + str(len(negative_flows)))
+        logger.info('lenPos: %d', len(positive_flows))
+        logger.info('lenNeg: %d', len(negative_flows))
         docs = Analyzer.gen_docs(positive_flows, char_wb)
         docs = docs + (Analyzer.gen_docs(negative_flows, char_wb))
         if simulate:
             if len(negative_flows) == 0:
                 docs = docs + Learner.simulate_flows(len(positive_flows), 0)
         samples = []
+        samples_num = []
         labels = []
         real_labels = []
         for doc in docs:
             samples.append(doc.doc)
+            numeric_fea_val = []
+            for x in doc.numeric_features:
+                if isinstance(x, list):
+                    numeric_fea_val.extend(x)
+                else:
+                    numeric_fea_val.append(x)
+            samples_num.append(numeric_fea_val)
             labels.append(doc.label)
             real_labels.append(doc.real_label)
             logger.debug(str(doc.label) + ": " + doc.doc)
 
-        return samples, np.array(labels), np.array(real_labels)
+        return samples, samples_num, np.array(labels), np.array(real_labels)
 
     @staticmethod
     def metrics(y_plabs, y_test, test_index=None, result=None):
@@ -199,10 +209,12 @@ def preprocess(negative_pcap_dir):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("-n", "--negdir", dest="neg_pcap_dir",
+    parser.add_argument("-d", "--dir", dest="neg_pcap_dir",
                         help="the full path of the dir that stores pcap files labelled as normal")
     parser.add_argument("-j", "--json", dest="gen_json", action='store_true',
                         help="if the jsons of the flows are not generated, generate")
+    parser.add_argument("-n", "--numeric", dest="numeric", action='store_true',
+                        help="whether use numeric features, which needs more memory")
     parser.add_argument("-l", "--log", dest="log", default='INFO',
                         help="the log level, such as INFO, DEBUG")
     parser.add_argument("-p", "--proc", dest="proc_num", default=4,
@@ -218,6 +230,8 @@ if __name__ == '__main__':
         gen_neg_flow_jsons(neg_pcap_dir, args.proc_num)
     pos_flows, neg_flows = preprocess(neg_pcap_dir)
 
-    instances, y, true_labels = Analyzer.gen_instances(pos_flows, neg_flows, char_wb=False, simulate=False)
-    X, feature_names, vec = Learner.gen_X_matrix(instances, tf=False)
+    text_fea, numeric_fea, y, true_labels = Analyzer.gen_instances(pos_flows, neg_flows, char_wb=False, simulate=False)
+    X, feature_names, vec = Learner.LabelledDocs.vectorize(text_fea, tf=False)
+    if args.numeric:
+        X = np.hstack([X.toarray(), numeric_fea])
     Analyzer.cross_validation(X, y, true_labels, LogisticRegression(class_weight='balanced', penalty='l2'))
