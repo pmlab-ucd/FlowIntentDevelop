@@ -116,20 +116,24 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
     intervals = []
     for i in range(1, len(epochs)):
         intervals.append(epochs[i] - epochs[i - 1])
-    flow = dict()
-    flow['frame_num'] = i
-    flow['up_count'] = up_count
-    flow['non_http_num'] = non_http_tcp_num
-    flow['len_stat'] = Learner.stat_fea_cal(frame_lengths)
-    flow['epoch_stat'] = Learner.stat_fea_cal(intervals)
-    flow['up_stat'] = Learner.stat_fea_cal(up_frames)
-    flow['down_stat'] = Learner.stat_fea_cal(down_frames)
-    flow['url'] = url
-    flow['label'] = label
-    flow['taint'] = taint
-    flow['pcap'] = pcap + '_steam_' + str(stream_index)
-
-    logger.debug(flow)
+    try:
+        flow = dict()
+        flow['frame_num'] = i
+        flow['up_count'] = up_count
+        flow['non_http_num'] = non_http_tcp_num
+        flow['len_stat'] = Learner.stat_fea_cal(frame_lengths)
+        flow['epoch_stat'] = Learner.stat_fea_cal(intervals)
+        flow['up_stat'] = Learner.stat_fea_cal(up_frames)
+        flow['down_stat'] = Learner.stat_fea_cal(down_frames)
+        flow['url'] = url
+        flow['label'] = label
+        flow['taint'] = taint
+        flow['pcap'] = pcap + '_steam_' + str(stream_index)
+        logger.debug(flow)
+    except Exception as e:
+        logger.warning('Error in processing ' + pcap)
+        logger.warning(e)
+        return None
     return flow
 
 
