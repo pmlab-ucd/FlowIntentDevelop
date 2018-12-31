@@ -4,7 +4,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn import tree
 from sklearn.naive_bayes import BernoulliNB
-# import pydotplus
+import pydotplus
 from statistics import *
 import pickle
 from sklearn.metrics import accuracy_score
@@ -60,9 +60,10 @@ class Learner:
             # stems = self.stem_tokens(tokens, stemmer)
             return tokens
 
-        def __init__(self, doc, label, char_wb=False):
+        def __init__(self, doc, label, real_label=None, char_wb=False):
             self.doc = doc
             self.label = label
+            self.real_label = real_label
             tokens = self.tokenize(doc)
             if char_wb:
                 self.doc = ''.join(tokens)
@@ -164,12 +165,13 @@ class Learner:
         return train_data, vocab, vectorizer
 
     @staticmethod
-    def ocsvm(train_data, labels, cross_vali=True):
+    def ocsvm(train_data, labels, n_fold=0):
         nu = float(np.count_nonzero(labels == -1)) / len(labels)
         clf = svm.OneClassSVM(nu=nu, kernel="rbf", gamma=0.1)
         results = None
-        if cross_vali:
-            results = Learner.cross_validation(clf, train_data, labels)
+        if n_fold != 0:
+            folds = Learner.n_folds(train_data, labels, fold=n_fold)
+            results = Learner.cross_validation(clf, train_data, labels, folds=folds)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             logger.info('OCSVM: ' + str(results['duration']))
@@ -185,7 +187,8 @@ class Learner:
         clf = BernoulliNB()
         results = None
         if n_fold != 0:
-            results = Learner.cross_validation(clf, train_data, labels, n=n_fold)
+            folds = Learner.n_folds(train_data, labels, fold=n_fold)
+            results = Learner.cross_validation(clf, train_data, labels, folds=folds)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             logger.info('Bayes: ' + str(results['duration']))
@@ -284,8 +287,8 @@ class Learner:
 
             # collect indices of false positive and negatives, effective only shuffle=False, or backup the original data
             if not isinstance(clf, svm.OneClassSVM):
-                fp_i = np.where((y_plabs == 0) & (y_test == 1))[0]
-                fn_i = np.where((y_plabs == 1) & (y_test == 0))[0]
+                fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
+                fn_i = np.where((y_plabs == 0) & (y_test == 1))[0]
                 result['fp_item'] = test_index[fp_i]
                 result['fn_item'] = test_index[fn_i]
                 # print(result['fp_item'])
@@ -319,7 +322,8 @@ class Learner:
         clf = svm.SVC(class_weight='balanced', probability=True)
         results = None
         if n_fold != 0:
-            results = Learner.cross_validation(clf, train_data, labels, fold=n_fold)
+            folds = Learner.n_folds(train_data, labels, fold=n_fold)
+            results = Learner.cross_validation(clf, train_data, labels, folds=folds)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             logger.info('SVM: ' + str(results['duration']))
@@ -339,7 +343,8 @@ class Learner:
         clf = LogisticRegression(class_weight='balanced')
         results = None
         if n_fold != 0:
-            results = Learner.cross_validation(clf, train_data, labels, fold=n_fold)
+            folds = Learner.n_folds(train_data, labels, fold=n_fold)
+            results = Learner.cross_validation(clf, train_data, labels, folds=folds)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             logger.info('Logistic: ' + str(results['duration']))
@@ -355,7 +360,7 @@ class Learner:
         return clf, results
 
     @staticmethod
-    def train_tree(train_data, labels, n_fold=5, res=None, output_dir=os.curdir, tree_name='tree'):
+    def train_tree(train_data, labels, n_fold=5, res=None, output_dir=None, tree_name='tree'):
         clf = DecisionTreeClassifier(class_weight='balanced')
         results = None
         if n_fold != 0:
@@ -373,15 +378,15 @@ class Learner:
         #
         # This may take a few minutes to run
         clf = clf.fit(train_data, labels)
-        """
-        tree.export_graphviz(clf, out_file=output_dir + '/' + tree_name + '.dot',
-                             feature_names=feature_names,
-                             label='root', impurity=False, special_characters=True)  # , max_depth=5)
-        dotfile = open(output_dir + '/' + tree_name + '.dot', 'r')
-        graph = pydotplus.graph_from_dot_data(dotfile.read())
-        graph.write_pdf(output_dir + '/' + tree_name + '.pdf')
-        dotfile.close()
-        """
+        if output_dir is not None:
+            tree.export_graphviz(clf, out_file=output_dir + '/' + tree_name + '.dot',
+                                 # feature_names=feature_names,
+                                 label='root', impurity=False, special_characters=True)  # , max_depth=5)
+            dot_file = open(output_dir + '/' + tree_name + '.dot', 'r')
+            graph = pydotplus.graph_from_dot_data(dot_file.read())
+            graph.write_pdf(output_dir + '/' + tree_name + '.pdf')
+            dot_file.close()
+
         if res is not None:
             res['tree'] = results
         return clf, results

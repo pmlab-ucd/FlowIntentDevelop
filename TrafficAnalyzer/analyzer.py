@@ -7,6 +7,7 @@ from learner import Learner
 import numpy as np
 import json
 from argparse import ArgumentParser
+from sklearn.linear_model import LogisticRegression
 
 logger = set_logger('Analyzer', 'INFO')
 
@@ -58,30 +59,72 @@ class Analyzer:
         docs = []
         for flow in jsons:
             line = flow['url']
-            label = 1 if flow['label'] == '1' else -1
+            label = 1 if flow['label'] == '1' else 0
+            real_label = 1 if flow['real_label'] == '1' else 0
             try:
-                docs.append(Learner.LabelledDocs(line, label, char_wb=char_wb))
+                docs.append(Learner.LabelledDocs(line, label, real_label, char_wb=char_wb))
             except Exception as e:
                 logger.warn(str(e) + ':' + str(line))
         return docs
 
     @staticmethod
-    def gen_instances(pos_flows, neg_flows, simulate=False, char_wb=False):
-        logger.info('lenPos: ' + str(len(pos_flows)))
-        logger.info('lenNeg: ' + str(len(neg_flows)))
-        docs = Analyzer.gen_docs(pos_flows, char_wb)
-        docs = docs + (Analyzer.gen_docs(neg_flows, char_wb))
+    def gen_instances(positive_flows, negative_flows, simulate=False, char_wb=False):
+        logger.info('lenPos: ' + str(len(positive_flows)))
+        logger.info('lenNeg: ' + str(len(negative_flows)))
+        docs = Analyzer.gen_docs(positive_flows, char_wb)
+        docs = docs + (Analyzer.gen_docs(negative_flows, char_wb))
         if simulate:
-            if len(neg_flows) == 0:
-                docs = docs + Learner.simulate_flows(len(pos_flows), 0)
+            if len(negative_flows) == 0:
+                docs = docs + Learner.simulate_flows(len(positive_flows), 0)
         samples = []
         labels = []
+        real_labels = []
         for doc in docs:
             samples.append(doc.doc)
             labels.append(doc.label)
+            real_labels.append(doc.real_label)
             logger.debug(str(doc.label) + ": " + doc.doc)
 
-        return samples, np.array(labels)
+        return samples, np.array(labels), np.array(real_labels)
+
+    @staticmethod
+    def cross_validation(X, y, real_labels, clf, fold=5):
+        folds = Learner.n_folds(X, y, fold=fold)
+        results = dict()
+        results['fold'] = []
+        scores = []
+        for fold in folds:
+            result = dict()
+            train_index = fold['train_index']
+            test_index = fold['test_index']
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], real_labels[test_index]
+            # train the classifier
+            clf.fit(X_train, y_train)
+            # make the predictions
+            predicted = clf.predict(X_test)
+            y_plabs = np.squeeze(predicted)
+            tp = len(np.where((y_plabs == 1) & (y_test == 1))[0])
+            tn = len(np.where((y_plabs == 0) & (y_test == 0))[0])
+            fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
+            fp = len(fp_i)
+            fn_i = np.where((y_plabs == 0) & (y_test == 1))[0]
+            fn = len(fn_i)
+            result['fp_item'] = test_index[fp_i]
+            result['fn_item'] = test_index[fn_i]
+            accuracy = float(tp + tn) / float(tp + tn + fp + fn)
+            logger.info("Accuracy: " + str(accuracy))
+            precision = float(tp) / float(tp + fp)
+            recall = float(tp) / float(tp + fn)
+            f_score = 2 * (precision * recall) / (precision + recall)
+            result['f_score'] = f_score
+            results['fold'].append(result)
+            scores.append(f_score)
+            logger.info("F-score: " + str(f_score) + ' Precision: ' + str(precision) + " Recall: " + str(recall))
+        results['mean_scores'] = np.mean(scores)
+        results['std_scores'] = np.std(scores)
+        logger.info('mean scores:' + str(results['mean_scores']))
+        return results
 
 
 def flows2jsons(negative_pcap_dir, label, json_ext, visited_pcap):
@@ -157,6 +200,6 @@ if __name__ == '__main__':
         gen_neg_flow_jsons(neg_pcap_dir, args.proc_num)
     pos_flows, neg_flows = preprocess(neg_pcap_dir)
 
-    instances, y = Analyzer.gen_instances(pos_flows, neg_flows, char_wb=False, simulate=False)
+    instances, y, true_labels = Analyzer.gen_instances(pos_flows, neg_flows, char_wb=False, simulate=False)
     X, feature_names, vec = Learner.gen_X_matrix(instances, tf=False)
-    Learner.train_classifier(Learner.train_tree, X, y, 5, dict(), 'tree')
+    Analyzer.cross_validation(X, y, true_labels, LogisticRegression(class_weight='balanced', penalty='l1'))
