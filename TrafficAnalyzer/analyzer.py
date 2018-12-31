@@ -113,17 +113,17 @@ class Analyzer:
             result['fp_item'] = test_index[fp_i]
             result['fn_item'] = test_index[fn_i]
             accuracy = float(tp + tn) / float(tp + tn + fp + fn)
-            logger.info("Accuracy: " + str(accuracy))
+            logger.info("Accuracy: %f", accuracy)
             precision = float(tp) / float(tp + fp)
             recall = float(tp) / float(tp + fn)
             f_score = 2 * (precision * recall) / (precision + recall)
             result['f_score'] = f_score
             results['fold'].append(result)
             scores.append(f_score)
-            logger.info("F-score: " + str(f_score) + ' Precision: ' + str(precision) + " Recall: " + str(recall))
+            logger.info("F-score: %f Precision: %f Recall: %f", f_score, precision, recall)
         results['mean_scores'] = np.mean(scores)
         results['std_scores'] = np.std(scores)
-        logger.info('mean scores:' + str(results['mean_scores']))
+        logger.info('mean score: %f', results['mean_scores'])
         return results
 
 
