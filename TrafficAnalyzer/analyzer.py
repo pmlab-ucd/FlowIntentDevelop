@@ -88,42 +88,60 @@ class Analyzer:
         return samples, np.array(labels), np.array(real_labels)
 
     @staticmethod
+    def metrics(y_plabs, y_test, test_index=None, result=None):
+        tp = len(np.where((y_plabs == 1) & (y_test == 1))[0])
+        tn = len(np.where((y_plabs == 0) & (y_test == 0))[0])
+        fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
+        fp = len(fp_i)
+        fn_i = np.where((y_plabs == 0) & (y_test == 1))[0]
+        fn = len(fn_i)
+        accuracy = float(tp + tn) / float(tp + tn + fp + fn)
+        precision = float(tp) / float(tp + fp)
+        recall = float(tp) / float(tp + fn)
+        f_score = 2 * (precision * recall) / (precision + recall)
+        if result is not None:
+            result['fp_item'] = test_index[fp_i]
+            result['fn_item'] = test_index[fn_i]
+        return accuracy, precision, recall, f_score
+
+    @staticmethod
     def cross_validation(X, y, real_labels, clf, fold=5):
         folds = Learner.n_folds(X, y, fold=fold)
         results = dict()
         results['fold'] = []
         scores = []
+        true_scores = []
         for fold in folds:
             result = dict()
             train_index = fold['train_index']
             test_index = fold['test_index']
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], real_labels[test_index]
+            y_train_true = real_labels[train_index]
             # train the classifier
             clf.fit(X_train, y_train)
             # make the predictions
             predicted = clf.predict(X_test)
             y_plabs = np.squeeze(predicted)
-            tp = len(np.where((y_plabs == 1) & (y_test == 1))[0])
-            tn = len(np.where((y_plabs == 0) & (y_test == 0))[0])
-            fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
-            fp = len(fp_i)
-            fn_i = np.where((y_plabs == 0) & (y_test == 1))[0]
-            fn = len(fn_i)
-            result['fp_item'] = test_index[fp_i]
-            result['fn_item'] = test_index[fn_i]
-            accuracy = float(tp + tn) / float(tp + tn + fp + fn)
+            accuracy, precision, recall, f_score = Analyzer.metrics(y_plabs, y_test, test_index, result)
             logger.info("Accuracy: %f", accuracy)
-            precision = float(tp) / float(tp + fp)
-            recall = float(tp) / float(tp + fn)
-            f_score = 2 * (precision * recall) / (precision + recall)
             result['f_score'] = f_score
             results['fold'].append(result)
             scores.append(f_score)
             logger.info("F-score: %f Precision: %f Recall: %f", f_score, precision, recall)
+            # train the classifier
+            clf.fit(X_train, y_train_true)
+            # make the predictions
+            predicted = clf.predict(X_test)
+            y_plabs = np.squeeze(predicted)
+            accuracy, precision, recall, f_score = Analyzer.metrics(y_plabs, y_test)
+            logger.info("True Accuracy: %f", accuracy)
+            logger.info("True F-score: %f Precision: %f Recall: %f", f_score, precision, recall)
+            true_scores.append(f_score)
         results['mean_scores'] = np.mean(scores)
         results['std_scores'] = np.std(scores)
         logger.info('mean score: %f', results['mean_scores'])
+        logger.info('true mean score: %f', np.mean(true_scores))
         return results
 
 
@@ -202,4 +220,4 @@ if __name__ == '__main__':
 
     instances, y, true_labels = Analyzer.gen_instances(pos_flows, neg_flows, char_wb=False, simulate=False)
     X, feature_names, vec = Learner.gen_X_matrix(instances, tf=False)
-    Analyzer.cross_validation(X, y, true_labels, LogisticRegression(class_weight='balanced', penalty='l1'))
+    Analyzer.cross_validation(X, y, true_labels, LogisticRegression(class_weight='balanced', penalty='l2'))
