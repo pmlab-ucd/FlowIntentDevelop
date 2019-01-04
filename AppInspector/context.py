@@ -8,7 +8,7 @@ import json
 from learner import Learner
 from utils import set_logger
 
-logger = set_logger('context')
+logger = set_logger('Context')
 
 
 class Context:
@@ -22,7 +22,7 @@ class Context:
                    'topic_map': [u'旅行', u'地图', u'地理', u'GPS', u'导航', u'旅游']}
 
     def __init__(self, data_dir, label):
-        print(data_dir)
+        logger.debug(data_dir)
         self.dir = data_dir
         self.id = os.path.basename(data_dir)
         self.label = label
@@ -35,7 +35,7 @@ class Context:
         self.xml = ''
         if self.html:
             self.topic, self.app_name = description(self.html)
-            print(self.topic, self.app_name)
+            logger.debug(self.topic, self.app_name)
         # Parse user interfaces
         xmls = find_xmls(data_dir)
         length = 0
@@ -79,10 +79,10 @@ def hierarchy_xml(xml_path):
                     # print(node.toxml())
                     if node.getAttribute('package') in str(xml_path):
                         all_views.append(node)
-                print(doc)
+                logger.debug(doc)
         except Exception as e:
-                print(e)
-                print(xml_path)
+            logger.warn(e)
+            logger.warn(xml_path)
     else:
         logger.warn('XML ' + xml_path + ' does not exist!')
     return all_views, doc
@@ -144,7 +144,7 @@ def description(html):
         for topic in sorted(topic_word_counter, key=topic_word_counter.get, reverse=True):
             return [topic, app_name]
     except Exception as e:
-        logger.warn(str(e))
+        logger.warn(e)
         return [category, app_name]
 
 

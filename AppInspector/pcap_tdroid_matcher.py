@@ -324,7 +324,7 @@ def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False, proc_nu
     """
     The main procedure of pcap_tdroid_mather.py.
     :param base_dir: The base dir of input dir.
-    :param out_dir: The base dir of output dir.
+    :param out_dir: The base dir of output dir. It is the folder to put organized (i.e. ordered by taint type) data.
     :param taint_type: The taint type, such as Location, IMEI, etc. See "gen_tag(src)".
     :param dataset: The dataset name (sub dir of the base dir).
     :param has_sub_dataset: Whether dataset has sub dir.
@@ -340,6 +340,7 @@ def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False, proc_nu
     p.close()
 
     if out_dir is None:
+        logger.debug('No output folder is given, terminate.')
         return
     out_dir = os.path.join(out_dir, taint_type)
     out_dir = os.path.join(out_dir, dataset)
@@ -363,6 +364,10 @@ if __name__ == '__main__':
                         help="whether dataset has sub dir")
     parser.add_argument("-p", "--proc", dest="proc_num", default=4,
                         help="the number of processes used in multiprocessing")
+    parser.add_argument("-l", "--log", dest="log", default='INFO',
+                        help="the log level, such as INFO, DEBUG")
     args = parser.parse_args()
+    if args.log != 'INFO':
+        logger = set_logger('TaintDroidLogProcessor', args.log)
     # Example: pcap_tdroid_matcher.py -i test/data -o test/data/ground/ -t Location -d raw
     match(args.in_dir, args.out_dir, args.taint, args.dataset, has_sub_dataset=args.sub_dir, proc_num=args.proc_num)

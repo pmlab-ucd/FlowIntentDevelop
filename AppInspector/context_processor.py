@@ -40,7 +40,7 @@ class ContextProcessor:
         return docs, np.array(labels)
 
     @staticmethod
-    def process(root_dir, pos_dir_name='1', neg_dir_name='0', reset_out_dir=False):
+    def process(root_dir, pos_dir_name='1', neg_dir_name='0', reset_out_dir=False, sub_dir_name=''):
         """
         Given the dataset of legal and illegal sharing text_fea
         Perform cross-validation on them
@@ -48,11 +48,12 @@ class ContextProcessor:
         :param pos_dir_name:
         :param neg_dir_name:
         :param reset_out_dir:
+        :param sub_dir_name:
         """
         # Load the contexts stored in the hard disk.
         # instances_dir_name = hashlib.md5(root.encode('utf-8')).hexdigest()
         # Output dir
-        contexts_dir = os.path.join('data', os.path.basename(root_dir))
+        contexts_dir = os.path.join('data', sub_dir_name)
         pos_dir = os.path.join(root_dir, pos_dir_name)
         pos_out_dir = os.path.join(contexts_dir, pos_dir_name)
         neg_dir = os.path.join(root_dir, neg_dir_name)
@@ -73,22 +74,23 @@ class ContextProcessor:
                 with open(os.path.join(neg_out_dir, instance.id + '.json'), 'w', encoding="utf8") as outfile:
                     outfile.write(instance.json())
             instances += neg_instances
-        else:
-            instances = []
-            instances_dict = []
-            for dir_path in [pos_out_dir, neg_out_dir]:
-                for root, dirs, files in os.walk(dir_path):
-                    for file_name in files:
-                        if file_name.endswith('.json'):
-                            with open(os.path.join(root, file_name), 'r', encoding="utf8") as my_file:
-                                instance = json.load(my_file)
-                                instances_dict.append(instance)
-                                instance = Object(instance)
-                                logger.debug(instance.dir)
-                                instances.append(instance)
-            with open(os.path.join(contexts_dir, 'contexts.json'), 'w', encoding="utf8") as outfile:
-                json.dump(instances_dict, outfile)
-                # pd.Series(text_fea).to_json(outfile, orient='values')
+        instances = []
+        instances_dict = []
+        for dir_path in [pos_out_dir, neg_out_dir]:
+            for root, dirs, files in os.walk(dir_path):
+                for file_name in files:
+                    if file_name.endswith('.json'):
+                        with open(os.path.join(root, file_name), 'r', encoding="utf8") as my_file:
+                            instance = json.load(my_file)
+                            instances_dict.append(instance)
+                            instance = Object(instance)
+                            logger.debug(instance.dir)
+                            instances.append(instance)
+        with open(os.path.join(contexts_dir, 'contexts.json'), 'w', encoding="utf8") as outfile:
+            json.dump(instances_dict, outfile)
+            logger.info("Generate contexts.json at %s", str(os.path.curdir))
+            # pd.Series(text_fea).to_json(outfile, orient='values')
+
         return instances, contexts_dir
 
     @staticmethod
@@ -149,7 +151,7 @@ class ContextProcessor:
             pd.Series(res).to_json(json_file, orient='split')
         #   json.dump(res, json_file)
         # with open(os.path.join(contexts_dir, 'voting_predicted_pos.json'), 'w') as json_file:
-            # json.dump(predicted_pos_instances, json_file)
+        # json.dump(predicted_pos_instances, json_file)
 
 
 if __name__ == '__main__':
@@ -160,5 +162,5 @@ if __name__ == '__main__':
     logger.setLevel(logging.DEBUG)
     logger.info('The data stored at: ', root)
     learner.logger.setLevel(logging.INFO)
-    samples, samples_dir = ContextProcessor.process(root, reset_out_dir=reset)
+    samples, samples_dir = ContextProcessor.process(root, reset_out_dir=reset, sub_dir_name=str(os.path.basename(root)))
     ContextProcessor.train(samples, samples_dir)

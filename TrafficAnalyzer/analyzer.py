@@ -8,6 +8,8 @@ import numpy as np
 import json
 from argparse import ArgumentParser
 from sklearn.linear_model import LogisticRegression
+from scipy import sparse
+import gc
 
 logger = set_logger('Analyzer', 'INFO')
 
@@ -28,7 +30,7 @@ class Analyzer:
                 folds = json.load(json_file)
                 for fold in folds:
                     pred_pos.extend([contexts[context] for context in fold['vot_pred_pos']])
-                logger.info(pred_pos)
+                logger.debug(pred_pos)
             return pred_pos
 
     @staticmethod
@@ -87,9 +89,13 @@ class Analyzer:
             numeric_fea_val = []
             for x in doc.numeric_features:
                 if isinstance(x, list):
-                    numeric_fea_val.extend(x)
+                    for val in x:
+                        if val == '?':
+                            logger.warning('Unknown value appeared in stats feature!')
+                            val = 0.0
+                        numeric_fea_val.append(float(val))
                 else:
-                    numeric_fea_val.append(x)
+                    numeric_fea_val.append(float(x))
             samples_num.append(numeric_fea_val)
             labels.append(doc.label)
             real_labels.append(doc.real_label)
@@ -179,13 +185,15 @@ def gen_neg_flow_jsons(negative_pcap_dir, proc_num=4):
     p.close()
 
 
-def preprocess(negative_pcap_dir):
+def preprocess(negative_pcap_dir, sub_dir_name=''):
     """
     Extract pos and neg pcaps from labelled context directories, and then transform them into jsons.
     :param negative_pcap_dir: The directory of labelled negative (normal) pcaps.
+    :param sub_dir_name:
     """
     # Positive/Abnormal pcaps.
-    contexts_dir = "../AppInspector/data/Location/"
+    contexts_dir = os.path.join("../AppInspector/data/", sub_dir_name)
+    logger.info('The contexts are stored at %s', os.path.abspath(contexts_dir))
     contexts = Analyzer.pred_pos_contexts(contexts_dir)
     positive_flows = Analyzer.sens_flow_jsons(contexts)
     for flow in positive_flows:
@@ -219,6 +227,8 @@ if __name__ == '__main__':
                         help="the log level, such as INFO, DEBUG")
     parser.add_argument("-p", "--proc", dest="proc_num", default=4,
                         help="the number of processes used in multiprocessing")
+    parser.add_argument("-s", "--subdir", dest="sub_dir", default='',
+                        help="the sub dir name that stores contexts")
     args = parser.parse_args()
 
     if args.log != 'INFO':
@@ -228,10 +238,14 @@ if __name__ == '__main__':
     logger.info('The negative pcaps are stored at: %s', neg_pcap_dir)
     if args.gen_json:
         gen_neg_flow_jsons(neg_pcap_dir, args.proc_num)
-    pos_flows, neg_flows = preprocess(neg_pcap_dir)
+    pos_flows, neg_flows = preprocess(neg_pcap_dir, sub_dir_name=args.sub_dir)
 
     text_fea, numeric_fea, y, true_labels = Analyzer.gen_instances(pos_flows, neg_flows, char_wb=False, simulate=False)
     X, feature_names, vec = Learner.LabelledDocs.vectorize(text_fea, tf=False)
     if args.numeric:
-        X = np.hstack([X.toarray(), numeric_fea])
-    Analyzer.cross_validation(X, y, true_labels, LogisticRegression(class_weight='balanced', penalty='l2'))
+        X = X.toarray()
+        X = np.hstack([X, numeric_fea])
+        penalty = 'l1'
+    else:
+        penalty = 'l2'
+    Analyzer.cross_validation(X, y, true_labels, LogisticRegression(class_weight='balanced', penalty=penalty))

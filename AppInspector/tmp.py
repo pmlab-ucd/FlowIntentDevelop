@@ -1,6 +1,7 @@
 from learner import Learner
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
+from scipy import sparse
 
 docs = ['b b', '测试', '测试', '测试', '测试', 'b', 'b', 'b', 'b', 'a 测试']
 numerical_features = [
@@ -18,7 +19,8 @@ numerical_features = [
 labels = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
 y = np.array(labels)
 train_data, voc, vec = Learner.LabelledDocs.vectorize(docs)
-combinedFeatures = np.hstack([numerical_features, train_data.toarray()])
+combinedFeatures = np.hstack([train_data.toarray(), numerical_features])
+combinedFeatures = sparse.csr_matrix(combinedFeatures)
 print(combinedFeatures)
 print(voc)
 folds = Learner.n_folds(combinedFeatures, y)
