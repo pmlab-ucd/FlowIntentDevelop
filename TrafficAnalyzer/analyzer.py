@@ -8,8 +8,11 @@ import numpy as np
 import json
 from argparse import ArgumentParser
 from sklearn.linear_model import LogisticRegression
-from scipy import sparse
-import gc
+from sklearn import svm
+from sklearn.covariance import EllipticEnvelope
+from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.model_selection import GridSearchCV
 
 logger = set_logger('Analyzer', 'INFO')
 
@@ -104,24 +107,38 @@ class Analyzer:
         return samples, samples_num, np.array(labels), np.array(real_labels)
 
     @staticmethod
-    def metrics(y_plabs, y_test, test_index=None, result=None):
+    def metrics(y_plabs, y_test, test_index=None, result=None, label_type=0):
         tp = len(np.where((y_plabs == 1) & (y_test == 1))[0])
-        tn = len(np.where((y_plabs == 0) & (y_test == 0))[0])
-        fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
+        tn = len(np.where((y_plabs == label_type) & (y_test == label_type))[0])
+        fp_i = np.where((y_plabs == 1) & (y_test == label_type))[0]
         fp = len(fp_i)
-        fn_i = np.where((y_plabs == 0) & (y_test == 1))[0]
+        fn_i = np.where((y_plabs == label_type) & (y_test == 1))[0]
         fn = len(fn_i)
         accuracy = float(tp + tn) / float(tp + tn + fp + fn)
-        precision = float(tp) / float(tp + fp)
-        recall = float(tp) / float(tp + fn)
-        f_score = 2 * (precision * recall) / (precision + recall)
+        if tp + fp == 0:
+            logger.warn('Zero positive! All test samples are labelled as negative!')
+            precision = 0
+        else:
+            precision = float(tp) / float(tp + fp)
+        if fn + tn == 0:
+            logger.warn('Zero negative! All test samples are labelled as positive!')
+        if fn + tn == 0:
+            logger.warn('Recall is Zero! tp + fn == 0!')
+            recall = 0
+        else:
+            recall = float(tp) / float(tp + fn)
+        if precision == 0 and recall == 0:
+            logger.warn('Both precision and recall is zero!')
+            f_score = 0
+        else:
+            f_score = 2 * (precision * recall) / (precision + recall)
         if result is not None:
             result['fp_item'] = test_index[fp_i]
             result['fn_item'] = test_index[fn_i]
         return accuracy, precision, recall, f_score
 
     @staticmethod
-    def cross_validation(X, y, real_labels, clf, fold=5):
+    def cross_validation(X, y, real_labels, clf, fold=5, label_type=0):
         folds = Learner.n_folds(X, y, fold=fold)
         results = dict()
         results['fold'] = []
@@ -132,6 +149,8 @@ class Analyzer:
             train_index = fold['train_index']
             test_index = fold['test_index']
             X_train, X_test = X[train_index], X[test_index]
+            # TODO The real label here is currently determined by manually labelled contexts,
+            #  but neg contexts may generate pos flows.
             y_train, y_test = y[train_index], real_labels[test_index]
             y_train_true = real_labels[train_index]
             # train the classifier
@@ -139,7 +158,8 @@ class Analyzer:
             # make the predictions
             predicted = clf.predict(X_test)
             y_plabs = np.squeeze(predicted)
-            accuracy, precision, recall, f_score = Analyzer.metrics(y_plabs, y_test, test_index, result)
+            accuracy, precision, recall, f_score = Analyzer.metrics(y_plabs, y_test, test_index, result,
+                                                                    label_type=label_type)
             logger.info("Accuracy: %f", accuracy)
             result['f_score'] = f_score
             results['fold'].append(result)
@@ -154,6 +174,85 @@ class Analyzer:
             logger.info("True Accuracy: %f", accuracy)
             logger.info("True F-score: %f Precision: %f Recall: %f", f_score, precision, recall)
             true_scores.append(f_score)
+        results['mean_scores'] = np.mean(scores)
+        results['std_scores'] = np.std(scores)
+        logger.info('mean score: %f', results['mean_scores'])
+        logger.info('true mean score: %f', np.mean(true_scores))
+        return results
+
+    @staticmethod
+    def anomaly_detection(X, y, real_labels, fold=5):
+        pos = np.where(y == 1)
+        X_pos, real_pos = X[pos], real_labels[pos]
+        X_neg = X[np.where(y == 0)]
+        # Divide X_pos into folds for cross-validation.
+        folds = Learner.n_folds(X_pos, np.ones(X_pos.shape[0]), fold=fold)
+        results = dict()
+        results['fold'] = []
+        scores = []
+        true_scores = []
+        # define outlier/anomaly detection methods to be compared
+        outliers_fraction = 0.27
+        anomaly_algorithms = [
+            # ("Robust covariance", EllipticEnvelope(contamination=outliers_fraction)),
+            ("One-Class SVM", svm.OneClassSVM(nu=outliers_fraction, kernel="rbf",
+                                              gamma=1e-09)),
+            # ("Isolation Forest", IsolationForest(behaviour='new',
+            #                                      contamination=outliers_fraction,
+            #                                      random_state=42)),
+            # ("Local Outlier Factor", LocalOutlierFactor(
+                # n_neighbors=35, contamination=outliers_fraction))
+        ]
+        for fold in folds:
+            for name, algorithm in anomaly_algorithms:
+                logger.info('--------------------%s-------------------', name)
+                result = dict()
+                train_index = fold['train_index']
+                test_index = fold['test_index']
+                X_train, X_test = X_pos[train_index], X_pos[test_index]
+                # TODO The real label here is currently determined by manually labelled contexts.
+                y_train, y_test = y[train_index], real_labels[test_index]
+                for i in range(y_test.shape[0]):
+                    y_test[i] = -1 if y_test[i] == 0 else y_test[i]
+                X_test = np.row_stack([X_test.toarray(), X_neg.toarray()])
+                y_neg = -1 * np.ones(X_neg.shape[0])
+                y_test = np.concatenate((y_test, y_neg), axis=0)
+                y_train_true = real_pos[train_index]
+                grid = {'gamma': np.logspace(-9, 3, 13),
+                        'nu': np.linspace(0.01, 0.99, 99)}
+                search = GridSearchCV(algorithm, grid, iid=False, cv=5,
+                                      return_train_score=False, scoring='accuracy')
+                search.fit(X_train, y_train)
+                print("Best parameter (CV score=%0.3f):" % search.best_score_)
+                print(search.best_params_)
+                # train the classifier
+                # TODO nu should be determined by the context classification results:
+                #  the percentage of neg flows appeared under pos contexts.
+                # algorithm.fit(X_train.toarray())
+                # make the predictions
+                algorithm = search
+                predicted = algorithm.predict(X_test)
+                y_plabs = np.squeeze(predicted)
+                # for i in range(len(real_labels)):
+                #     added = np.array([test_index.shape[0]])
+                #     test_index = np.concatenate((test_index, added), axis=0)
+                print(y_plabs)
+                print(y_test)
+                accuracy, precision, recall, f_score = Analyzer.metrics(y_plabs, y_test, label_type=-1)
+                logger.info("Accuracy: %f", accuracy)
+                result['f_score'] = f_score
+                results['fold'].append(result)
+                scores.append(f_score)
+                logger.info("F-score: %f Precision: %f Recall: %f", f_score, precision, recall)
+                # train the classifier
+                # algorithm.fit(X_train.toarray(), y_train_true)
+                # # make the predictions
+                # predicted = algorithm.predict(X_test)
+                # y_plabs = np.squeeze(predicted)
+                # accuracy, precision, recall, f_score = Analyzer.metrics(y_plabs, y_test, label_type=-1)
+                # logger.info("True Accuracy: %f", accuracy)
+                # logger.info("True F-score: %f Precision: %f Recall: %f", f_score, precision, recall)
+                # true_scores.append(f_score)
         results['mean_scores'] = np.mean(scores)
         results['std_scores'] = np.std(scores)
         logger.info('mean score: %f', results['mean_scores'])
@@ -248,4 +347,7 @@ if __name__ == '__main__':
         penalty = 'l1'
     else:
         penalty = 'l2'
+    logger.info('--------------------Logistic Regression-------------------')
     Analyzer.cross_validation(X, y, true_labels, LogisticRegression(class_weight='balanced', penalty=penalty))
+    logger.info('--------------------Anomaly Detection-------------------')
+    Analyzer.anomaly_detection(X, y, true_labels)

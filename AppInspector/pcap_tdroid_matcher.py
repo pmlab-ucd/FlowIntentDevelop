@@ -332,12 +332,15 @@ def match(base_dir, out_dir, taint_type, dataset, has_sub_dataset=False, proc_nu
     """
     if dataset is not None:
         base_dir = os.path.join(base_dir, dataset)
-    # Derive the interested flows from pcaps based on the taint src, and output the corresponding jsons.
-    visited = Manager().dict()
+    if proc_num != 0:
+        # Derive the interested flows from pcaps based on the taint src, and output the corresponding jsons.
+        visited = Manager().dict()
 
-    p = Pool(proc_num)
-    p.map(parse_dir_mp_wrapper, [(base_dir, taint_type, visited)] * proc_num)
-    p.close()
+        p = Pool(proc_num)
+        p.map(parse_dir_mp_wrapper, [(base_dir, taint_type, visited)] * proc_num)
+        p.close()
+    else:
+        logger.info('Reorg flag is set, will not generate flow json this time.')
 
     if out_dir is None:
         logger.debug('No output folder is given, terminate.')
@@ -357,11 +360,13 @@ if __name__ == '__main__':
     parser.add_argument("-o", "--outdir", dest="out_dir", default=None,
                         help="the full path of the base dir of output directory")
     parser.add_argument("-t", "--taint", dest="taint",
-                        help="the taint type, such as Location")
+                        help="the taint type, such as Location, IMEI, Address, etc.")
     parser.add_argument("-d", "--dataset", dest="dataset", default=None,
                         help="the dataset name (sub dir of the base dir)")
-    parser.add_argument("-s", "--sub", dest="sub_dir", default=False,
+    parser.add_argument("-s", "--sub", dest="sub_dir", action='store_true', default=False,
                         help="whether dataset has sub dir")
+    parser.add_argument("-r", "--reorganize", dest="reorg", action='store_true', default=False,
+                        help="only reorganize the data, no need to reparsing the pcap.")
     parser.add_argument("-p", "--proc", dest="proc_num", default=4,
                         help="the number of processes used in multiprocessing")
     parser.add_argument("-l", "--log", dest="log", default='INFO',
@@ -370,4 +375,5 @@ if __name__ == '__main__':
     if args.log != 'INFO':
         logger = set_logger('TaintDroidLogProcessor', args.log)
     # Example: pcap_tdroid_matcher.py -i test/data -o test/data/ground/ -t Location -d raw
-    match(args.in_dir, args.out_dir, args.taint, args.dataset, has_sub_dataset=args.sub_dir, proc_num=args.proc_num)
+    proc_num = 0 if args.reorg else args.proc_num
+    match(args.in_dir, args.out_dir, args.taint, args.dataset, has_sub_dataset=args.sub_dir, proc_num=proc_num)
