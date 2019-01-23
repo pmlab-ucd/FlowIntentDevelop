@@ -13,6 +13,7 @@ from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.model_selection import GridSearchCV
+import pickle
 
 logger = set_logger('Analyzer', 'INFO')
 
@@ -201,7 +202,7 @@ class Analyzer:
             #                                      contamination=outliers_fraction,
             #                                      random_state=42)),
             # ("Local Outlier Factor", LocalOutlierFactor(
-                # n_neighbors=35, contamination=outliers_fraction))
+            # n_neighbors=35, contamination=outliers_fraction))
         ]
         for fold in folds:
             for name, algorithm in anomaly_algorithms:
@@ -326,10 +327,12 @@ if __name__ == '__main__':
                         help="the log level, such as INFO, DEBUG")
     parser.add_argument("-p", "--proc", dest="proc_num", default=4,
                         help="the number of processes used in multiprocessing")
-    parser.add_argument("-s", "--subdir", dest="sub_dir", default='',
+    parser.add_argument("-sub", "--subdir", dest="sub_dir", default='',
                         help="the sub dir name that stores contexts")
     parser.add_argument("-u", "--unsuper", dest="unsupervised", action='store_true',
                         help="whether perform unsupervised learning")
+    parser.add_argument("-s", "--save", dest="save_path", default='',
+                        help="save the predictor to ...")
     args = parser.parse_args()
 
     if args.log != 'INFO':
@@ -350,7 +353,15 @@ if __name__ == '__main__':
     else:
         penalty = 'l2'
     logger.info('--------------------Logistic Regression-------------------')
-    Analyzer.cross_validation(X, y, true_labels, LogisticRegression(class_weight='balanced', penalty=penalty))
+    clf = LogisticRegression(class_weight='balanced', penalty=penalty)
+    Analyzer.cross_validation(X, y, true_labels, clf)
+    if args.save_path != '':
+        clf.fit(X, y)
+        model_dir_path = os.path.abspath(os.path.join(args.save_path, os.pardir))
+        os.makedirs(model_dir_path, exist_ok=True)
+        with open(args.save_path, 'wb') as fid:
+            pickle.dump(clf, fid)
+            logger.info('The predictor is saved in %s', model_dir_path)
     if args.unsupervised:
         logger.info('--------------------Unsupervised Learning-------------------')
         Analyzer.anomaly_detection(X, y, true_labels)
