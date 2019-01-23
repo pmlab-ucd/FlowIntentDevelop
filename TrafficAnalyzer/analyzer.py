@@ -328,6 +328,8 @@ if __name__ == '__main__':
                         help="the number of processes used in multiprocessing")
     parser.add_argument("-s", "--subdir", dest="sub_dir", default='',
                         help="the sub dir name that stores contexts")
+    parser.add_argument("-u", "--unsuper", dest="unsupervised", action='store_true',
+                        help="whether perform unsupervised learning")
     args = parser.parse_args()
 
     if args.log != 'INFO':
@@ -349,5 +351,6 @@ if __name__ == '__main__':
         penalty = 'l2'
     logger.info('--------------------Logistic Regression-------------------')
     Analyzer.cross_validation(X, y, true_labels, LogisticRegression(class_weight='balanced', penalty=penalty))
-    logger.info('--------------------Anomaly Detection-------------------')
-    Analyzer.anomaly_detection(X, y, true_labels)
+    if args.unsupervised:
+        logger.info('--------------------Unsupervised Learning-------------------')
+        Analyzer.anomaly_detection(X, y, true_labels)
