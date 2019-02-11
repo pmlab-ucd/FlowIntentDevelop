@@ -61,7 +61,13 @@ class Analyzer:
         return jsons
 
     @staticmethod
-    def gen_docs(jsons, char_wb=False):
+    def gen_docs(jsons: [{}], char_wb: bool = False) -> [Learner.LabelledDocs]:
+        """
+        Generate string list from the flow URLs.
+        :param jsons: The flow jsons.
+        :param char_wb:
+        :return:
+        """
         docs = []
         for flow in jsons:
             line = flow['url']
@@ -76,7 +82,17 @@ class Analyzer:
         return docs
 
     @staticmethod
-    def gen_instances(positive_flows, negative_flows, simulate=False, char_wb=False):
+    def gen_instances(positive_flows: list, negative_flows: list, simulate: bool = False, char_wb: bool = False) -> (
+            list, [[float]], np.array, np.array):
+        """
+
+        :rtype 'Tuple[list, List[List[float]], ndarray, ndarray]
+        :param positive_flows:
+        :param negative_flows:
+        :param simulate: Whether generate simulated random flows.
+        :param char_wb: Whether add a space before and after each token.
+        :return:
+        """
         logger.info('lenPos: %d', len(positive_flows))
         logger.info('lenNeg: %d', len(negative_flows))
         docs = Analyzer.gen_docs(positive_flows, char_wb)

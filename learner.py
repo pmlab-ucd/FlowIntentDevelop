@@ -48,10 +48,7 @@ class Learner:
     class LabelledDocs:
         @staticmethod
         def stem_tokens(tokens, stemmer):
-            stemmed = []
-            for item in tokens:
-                stemmed.append(stemmer.stem(item))
-            return stemmed
+            return [stemmer.stem(item) for item in tokens]
 
         @staticmethod
         def vectorize(instances, vec=None, tf=False, ngrams_range=None):
@@ -103,7 +100,12 @@ class Learner:
             return train_data, vocab, vectorizer
 
         @staticmethod
-        def tokenize(text):
+        def tokenize(text: str) -> [str]:
+            """
+            Tokenize the given text.
+            :param text: a string
+            :return: The vocabulary.
+            """
             vectorizer = CountVectorizer(analyzer='word')
             vectorizer.fit_transform([text])
             tokens = vectorizer.get_feature_names()
@@ -111,6 +113,15 @@ class Learner:
             return tokens
 
         def __init__(self, doc, label, numeric_features=None, real_label=None, char_wb=False):
+            """
+            Create a instance representing a text string to be used by ML.
+            :param doc: The text string.
+            :param label: The assigned label for training.
+            :param numeric_features: The numeric feature values.
+            :param real_label: The ground truth label of this instance.
+            :param char_wb: Used to n-grams only from characters inside word boundaries (padded with space on each side)
+            https://scikit-learn.org/stable/modules/feature_extraction.html#limitations-of-the-bag-of-words-representation
+            """
             self.doc = doc
             self.label = label
             self.real_label = real_label
