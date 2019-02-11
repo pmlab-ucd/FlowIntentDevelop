@@ -377,7 +377,7 @@ if __name__ == '__main__':
         os.makedirs(model_dir_path, exist_ok=True)
         with open(args.save_path, 'wb') as fid:
             pickle.dump(clf, fid)
-            logger.info('The predictor is saved in %s', model_dir_path)
+            logger.info('The predictor is saved at %s', args.save_path)
     if args.unsupervised:
         logger.info('--------------------Unsupervised Learning-------------------')
         Analyzer.anomaly_detection(X, y, true_labels)
