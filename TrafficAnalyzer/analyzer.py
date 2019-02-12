@@ -26,11 +26,11 @@ class Analyzer:
         :param pred_contexts_path: Where the predicted contexts locate.
         :return pred_pos: predicted positive contexts.
         """
-        with open(os.path.join(pred_contexts_path, 'contexts.json'), 'r') as infile:
+        with open(os.path.join(pred_contexts_path, 'contexts.json'), 'r', errors='ignore') as infile:
             contexts = json.load(infile)
             logger.info(len(contexts))
             pred_pos = []
-            with open(os.path.join(pred_contexts_path, 'folds.json'), 'r') as json_file:
+            with open(os.path.join(pred_contexts_path, 'folds.json'), 'r', errors='ignore') as json_file:
                 folds = json.load(json_file)
                 for fold in folds:
                     pred_pos.extend([contexts[context] for context in fold['vot_pred_pos']])

@@ -69,8 +69,8 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
                                                                             '-e http.request.full_uri ' \
                                                                             '-e http.content_length ' \
                                                                             '-e http.response '
-    lines = os.popen(cmd).readlines()
     logger.debug(cmd)
+    lines = os.popen(cmd).readlines()
     i = 0
     frame_lengths = []
     epochs = []
@@ -143,12 +143,16 @@ def flows2json(sub_dir, filename, label=None, filter_funcs=None, args=None,
         sub_flows = []
         pcap_path = os.path.join(sub_dir, filename)
         for i in range(tcp_stream_number(pcap_path) + 1):
-            flow = http_trace(pcap_path, i, label=label, matching_funcs=filter_funcs, args=args)
-            if flow is not None:
-                sub_flows.append(flow)
+            try:
+                flow = http_trace(pcap_path, i, label=label, matching_funcs=filter_funcs, args=args)
+                if flow is not None:
+                    sub_flows.append(flow)
+            except UnicodeDecodeError as e:
+                logger.warning('Errors in processing %s', pcap_path)
+                logger.warning(e)
         if len(sub_flows) != 0:
             with open(os.path.join(sub_dir, os.path.splitext(filename)[0] + json_ext), 'w',
-                      encoding="utf8") as outfile:
+                      encoding="utf8", errors='ignore') as outfile:
                 json.dump(sub_flows, outfile)
             return sub_flows
 
