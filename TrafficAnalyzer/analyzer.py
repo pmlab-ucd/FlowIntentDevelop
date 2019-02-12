@@ -283,7 +283,7 @@ def flows2jsons(negative_pcap_dir, label, json_ext, visited_pcap, has_sub_dir=Fa
             for file in files:
                 if file.endswith('.pcap') and file not in visited_pcap:
                     visited_pcap[file] = 1
-                    flows2json(negative_pcap_dir, file, label=label, json_ext=json_ext)
+                    flows2json(root, file, label=label, json_ext=json_ext)
         return
     for filename in os.listdir(negative_pcap_dir):
         if filename not in visited_pcap:
