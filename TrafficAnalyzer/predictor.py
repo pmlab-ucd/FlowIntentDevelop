@@ -3,9 +3,8 @@ import pickle
 from argparse import ArgumentParser
 import os
 import json
-from TrafficAnalyzer.analyzer import Analyzer
+from TrafficAnalyzer.analyzer import Analyzer, gen_neg_flow_jsons
 from learner import Learner
-import sklearn
 
 logger = set_logger('Predictor', 'INFO')
 
@@ -47,6 +46,12 @@ if __name__ == '__main__':
                         help="the full path of the saved vocabulary")
     parser.add_argument("-d", "--data", dest="data",
                         help="the path of data needed to be predicted")
-
+    parser.add_argument("-j", "--jsons", dest="jsons", action='store_true',
+                        help="is it needed to first generate http_flows.json?")
+    parser.add_argument("-p", "--proc", dest="proc_num", default=4,
+                        help="the number of processes used in multiprocessing")
     args = parser.parse_args()
+    if args.jsons:
+        logger.info('Generate flow jsons ...')
+        gen_neg_flow_jsons(args.data, args.proc_num, has_sub_dir=True)
     predict(args.model, args.vec, args.data)

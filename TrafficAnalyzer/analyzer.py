@@ -277,27 +277,33 @@ class Analyzer:
         return results
 
 
-def flows2jsons(negative_pcap_dir, label, json_ext, visited_pcap):
+def flows2jsons(negative_pcap_dir, label, json_ext, visited_pcap, has_sub_dir=False):
+    if has_sub_dir:
+        for root, dirs, files in os.walk(negative_pcap_dir):
+            for file in files:
+                if file.endswith('.pcap') and file not in visited_pcap:
+                    visited_pcap[file] = 1
+                    flows2json(negative_pcap_dir, file, label=label, json_ext=json_ext)
+        return
     for filename in os.listdir(negative_pcap_dir):
-        if filename in visited_pcap:
-            continue
-        else:
+        if filename not in visited_pcap:
             visited_pcap[filename] = 1
-        flows2json(negative_pcap_dir, filename, label=label, json_ext=json_ext)
+            flows2json(negative_pcap_dir, filename, label=label, json_ext=json_ext)
 
 
 def flow2json_mp_wrapper(args):
     flows2jsons(*args)
 
 
-def gen_neg_flow_jsons(negative_pcap_dir, proc_num=4):
+def gen_neg_flow_jsons(negative_pcap_dir, proc_num=4, has_sub_dir=False):
     """
     :param negative_pcap_dir: The directory of labelled negative (normal) pcaps.
     :param proc_num:
+    :param has_sub_dir: Whether has sub directories.
     """
     visited = Manager().dict()
     p = Pool(proc_num)
-    p.map(flow2json_mp_wrapper, [(negative_pcap_dir, '0', '_http_flows.json', visited)] * proc_num)
+    p.map(flow2json_mp_wrapper, [(negative_pcap_dir, '0', '_http_flows.json', visited, has_sub_dir)] * proc_num)
     p.close()
 
 
