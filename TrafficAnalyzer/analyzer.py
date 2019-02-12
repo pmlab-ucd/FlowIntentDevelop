@@ -347,8 +347,10 @@ if __name__ == '__main__':
                         help="the sub dir name that stores contexts")
     parser.add_argument("-u", "--unsuper", dest="unsupervised", action='store_true',
                         help="whether perform unsupervised learning")
-    parser.add_argument("-s", "--save", dest="save_path", default='',
-                        help="save the predictor to ...")
+    parser.add_argument("-s", "--save", dest="save_dir_path", default='',
+                        help="save the predictor to which directory")
+    parser.add_argument("-f", "--fname", dest="fname", default='test',
+                        help="the file name of the saved stuff")
     args = parser.parse_args()
 
     if args.log != 'INFO':
@@ -371,13 +373,17 @@ if __name__ == '__main__':
     logger.info('--------------------Logistic Regression-------------------')
     clf = LogisticRegression(class_weight='balanced', penalty=penalty)
     Analyzer.cross_validation(X, y, true_labels, clf)
-    if args.save_path != '':
+    if args.save_dir_path != '':
         clf.fit(X, y)
-        model_dir_path = os.path.abspath(os.path.join(args.save_path, os.pardir))
-        os.makedirs(model_dir_path, exist_ok=True)
-        with open(args.save_path, 'wb') as fid:
+        os.makedirs(args.save_dir_path, exist_ok=True)
+        model_path = os.path.join(args.save_dir_path, args.fname + '.model')
+        with open(model_path, 'wb') as fid:
             pickle.dump(clf, fid)
-            logger.info('The predictor is saved at %s', args.save_path)
+            logger.info('The predictor is saved at %s', os.path.abspath(model_path))
+        vec_path = os.path.join(args.save_dir_path, args.fname + '.vec')
+        with open(vec_path, 'wb') as fid:
+            pickle.dump(vec, fid)
+            logger.info('The predictor is saved at %s', os.path.abspath(vec_path))
     if args.unsupervised:
         logger.info('--------------------Unsupervised Learning-------------------')
         Analyzer.anomaly_detection(X, y, true_labels)
