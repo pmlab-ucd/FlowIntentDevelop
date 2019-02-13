@@ -54,15 +54,17 @@ def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
         logger.info(flow['pcap'])
         logger.info(flow['url'])
         logger.debug(numeric_fea[ind])
-        logger.debug(X[ind])
-    logger.info("-----------------------------------------------------------------------------------")
-    for i in range(0, 50):
+        rows, cols = X[ind].nonzero()
+        fea_val_name = [feature_names[i] for i in cols]
+        logger.info(fea_val_name)
+    logger.debug("-----------------------------------------------------------------------------------")
+    for i in range(0, 0):
         ind = neg_ind[i]
         flow = test_flows[ind]
         logger.debug([flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
                       flow['up_stat'], flow['down_stat']])
-        logger.info(flow['pcap'])
-        logger.info(flow['url'])
+        logger.debug(flow['pcap'])
+        logger.debug(flow['url'])
         logger.debug(numeric_fea[ind])
         logger.debug(X[ind])
 
