@@ -6,6 +6,7 @@ import json
 from TrafficAnalyzer.analyzer import Analyzer, gen_neg_flow_jsons
 from learner import Learner
 import numpy as np
+import pandas as pd
 
 logger = set_logger('Predictor', 'INFO')
 
@@ -18,7 +19,7 @@ def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
     :param data_dir_path: The path of the test flows. /home/workspace/FlowIntent/data/Location/cxt/0
     :param numeric: Whether use numeric features.
     """
-    model = pickle.load(open(model_path, 'rb'))
+    logistic = pickle.load(open(model_path, 'rb'))
     vec = pickle.load(open(vec_path, 'rb'))
     # Negative/Normal pcaps.
     # They have no relationship with "context" defined in AppInspector, just a bunch of normal flows.
@@ -40,12 +41,14 @@ def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
         X = X.toarray()
         X = np.hstack([X, numeric_fea])
     # Prediction.
-    res = model.predict(X)
+    res = logistic.predict(X)
     pos_ind = np.where(res == 1)[0]
     neg_ind = np.where(res == 0)[0]
     logger.info(res)
     logger.info(pos_ind)
     logger.info(len(pos_ind))
+    coefficients = pd.concat([pd.DataFrame(feature_names), pd.DataFrame(np.transpose(logistic.coef_))], axis=1)
+    logger.info(coefficients)
     for i in range(0, 50):
         ind = pos_ind[i]
         flow = test_flows[ind]
@@ -55,8 +58,9 @@ def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
         logger.info(flow['url'])
         logger.debug(numeric_fea[ind])
         rows, cols = X[ind].nonzero()
-        fea_val_name = [feature_names[i] for i in cols]
-        logger.info(fea_val_name)
+        fea_val = [(coefficients.iloc[i, 0], coefficients.iloc[i, 1]) for i in cols]
+        logger.info(fea_val)
+        logger.info('Sum: %f', sum([val[1] for val in fea_val]))
     logger.debug("-----------------------------------------------------------------------------------")
     for i in range(0, 0):
         ind = neg_ind[i]
