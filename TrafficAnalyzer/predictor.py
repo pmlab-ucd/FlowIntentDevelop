@@ -34,7 +34,7 @@ def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
                         flow['real_label'] = '0'
                         test_flows.append(flow)
     logger.info('The number of test flows %d', len(test_flows))
-    # Covert flows to a feature matrix.
+    # Covert the flows to a feature matrix.
     text_fea, numeric_fea, y, true_labels = Analyzer.gen_instances([], test_flows)
     X, feature_names, vec = Learner.LabelledDocs.vectorize(text_fea, vec=vec, tf=False)
     if numeric:
@@ -42,6 +42,11 @@ def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
         X = np.hstack([X, numeric_fea])
     # Prediction.
     res = logistic.predict(X)
+    # Analysis.
+    analyze(logistic, res, X, test_flows, feature_names)
+
+
+def analyze(logistic, res: [], X, flows: [{}], feature_names: []):
     pos_ind = np.where(res == 1)[0]
     neg_ind = np.where(res == 0)[0]
     logger.info(res)
@@ -51,12 +56,11 @@ def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
     logger.info(coefficients)
     for i in range(0, 50):
         ind = pos_ind[i]
-        flow = test_flows[ind]
+        flow = flows[ind]
         logger.debug([flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
                       flow['up_stat'], flow['down_stat']])
         logger.info(flow['pcap'])
         logger.info(flow['url'])
-        logger.debug(numeric_fea[ind])
         rows, cols = X[ind].nonzero()
         fea_val = [(coefficients.iloc[i, 0], coefficients.iloc[i, 1]) for i in cols]
         logger.info(fea_val)
@@ -64,12 +68,11 @@ def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
     logger.debug("-----------------------------------------------------------------------------------")
     for i in range(0, 0):
         ind = neg_ind[i]
-        flow = test_flows[ind]
+        flow = flows[ind]
         logger.debug([flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
                       flow['up_stat'], flow['down_stat']])
         logger.debug(flow['pcap'])
         logger.debug(flow['url'])
-        logger.debug(numeric_fea[ind])
         logger.debug(X[ind])
 
 
