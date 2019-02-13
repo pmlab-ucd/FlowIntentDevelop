@@ -277,18 +277,18 @@ class Analyzer:
         return results
 
 
-def flows2jsons(negative_pcap_dir, label, json_ext, visited_pcap, has_sub_dir=False):
+def flows2jsons(negative_pcap_dir, label, json_ext, visited_pcap, fn_filter='filter', has_sub_dir=False):
     if has_sub_dir:
         for root, dirs, files in os.walk(negative_pcap_dir):
             for file in files:
                 if file.endswith('.pcap') and file not in visited_pcap:
                     visited_pcap[file] = 1
-                    flows2json(root, file, label=label, json_ext=json_ext)
+                    flows2json(root, file, fn_filter=fn_filter, label=label, json_ext=json_ext)
         return
     for filename in os.listdir(negative_pcap_dir):
         if filename not in visited_pcap:
             visited_pcap[filename] = 1
-            flows2json(negative_pcap_dir, filename, label=label, json_ext=json_ext)
+            flows2json(negative_pcap_dir, filename, fn_filter=fn_filter, label=label, json_ext=json_ext)
 
 
 def flow2json_mp_wrapper(args):
@@ -303,7 +303,7 @@ def gen_neg_flow_jsons(negative_pcap_dir, proc_num=4, has_sub_dir=False):
     """
     visited = Manager().dict()
     p = Pool(proc_num)
-    p.map(flow2json_mp_wrapper, [(negative_pcap_dir, '0', '_http_flows.json', visited, has_sub_dir)] * proc_num)
+    p.map(flow2json_mp_wrapper, [(negative_pcap_dir, '0', '_http_flows.json', visited, None, has_sub_dir)] * proc_num)
     p.close()
 
 
@@ -342,7 +342,7 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--dir", dest="neg_pcap_dir",
                         help="the full path of the dir that stores pcap files labelled as normal")
     parser.add_argument("-j", "--json", dest="gen_json", action='store_true',
-                        help="if the jsons of the flows are not generated, generate")
+                        help="if the jsons of the negative flows are not generated, generate")
     parser.add_argument("-n", "--numeric", dest="numeric", action='store_true',
                         help="whether use numeric features, which needs more memory")
     parser.add_argument("-l", "--log", dest="log", default='INFO',

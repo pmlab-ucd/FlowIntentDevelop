@@ -139,7 +139,7 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
 
 def flows2json(sub_dir, filename, label=None, filter_funcs=None, args=None,
                fn_filter='filter', json_ext='_sens_http_flows.json'):
-    if fn_filter not in filename and filename.endswith('.pcap'):
+    if (fn_filter is None or fn_filter not in filename) and filename.endswith('.pcap'):
         sub_flows = []
         pcap_path = os.path.join(sub_dir, filename)
         for i in range(tcp_stream_number(pcap_path) + 1):
@@ -170,7 +170,7 @@ def flows2jsons(sub_dir, flows, label=None, filter_funcs=None, args=None,
     :param json_ext:
     """
     for filename in os.listdir(sub_dir):
-        if fn_filter not in filename and filename.endswith('.pcap'):
+        if (fn_filter is None or fn_filter not in filename) and filename.endswith('.pcap'):
             sub_flows = flows2json(sub_dir, filename, label, filter_funcs, args, fn_filter, json_ext)
             if sub_flows is not None:
                 flows.extend(sub_flows)

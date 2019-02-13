@@ -5,16 +5,18 @@ import os
 import json
 from TrafficAnalyzer.analyzer import Analyzer, gen_neg_flow_jsons
 from learner import Learner
+import numpy as np
 
 logger = set_logger('Predictor', 'INFO')
 
 
-def predict(model_path: str, vec_path: str, data_dir_path: str):
+def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
     """
     Predict on any flow using the saved model.
     :param model_path: The path of a saved model.
     :param vec_path: sklearn.feature_extraction.text.CountVectorizer
     :param data_dir_path: The path of the test flows. /home/workspace/FlowIntent/data/Location/cxt/0
+    :param numeric: Whether use numeric features.
     """
     model = pickle.load(open(model_path, 'rb'))
     vec = pickle.load(open(vec_path, 'rb'))
@@ -32,10 +34,19 @@ def predict(model_path: str, vec_path: str, data_dir_path: str):
                         test_flows.append(flow)
     logger.info('The number of test flows %d', len(test_flows))
     # Covert flows to a feature matrix.
-    text_fea, numeric_fea, y, true_labels = Analyzer.gen_instances(test_flows, [])
+    text_fea, numeric_fea, y, true_labels = Analyzer.gen_instances([], test_flows)
     X, feature_names, vec = Learner.LabelledDocs.vectorize(text_fea, vec=vec, tf=False)
+    if numeric:
+        X = X.toarray()
+        X = np.hstack([X, numeric_fea])
     # Prediction.
     res = model.predict(X)
+    pos_ind = np.where(res == 1)[0]
+    logger.info(res)
+    logger.info(pos_ind)
+    logger.info(len(pos_ind))
+    for i in range(0, 100):
+        logger.info(test_flows[pos_ind[i]]['pcap'])
 
 
 if __name__ == '__main__':
@@ -50,8 +61,10 @@ if __name__ == '__main__':
                         help="is it needed to first generate http_flows.json?")
     parser.add_argument("-p", "--proc", dest="proc_num", default=4,
                         help="the number of processes used in multiprocessing")
+    parser.add_argument("-n", "--numeric", dest="numeric", action='store_true',
+                        help="whether use numeric features, which needs more memory")
     args = parser.parse_args()
     if args.jsons:
         logger.info('Generate flow jsons ...')
         gen_neg_flow_jsons(args.data, args.proc_num, has_sub_dir=True)
-    predict(args.model, args.vec, args.data)
+    predict(args.model, args.vec, args.data, args.numeric)
