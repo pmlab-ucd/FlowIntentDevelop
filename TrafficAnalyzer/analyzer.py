@@ -75,21 +75,18 @@ class Analyzer:
             real_label = 1 if flow['real_label'] == '1' else 0
             numeric = [flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
                        flow['up_stat'], flow['down_stat']]
-            try:
-                docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb))
-            except Exception as e:
-                logger.warn(str(e) + ': ' + line)
+            docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb))
         return docs
 
     @staticmethod
     def gen_instances(positive_flows: list, negative_flows: list, simulate: bool = False, char_wb: bool = False) -> (
             list, [[float]], np.array, np.array):
         """
-
+        Generate the instances for ML from the given flows.
         :rtype 'Tuple[list, List[List[float]], ndarray, ndarray]
         :param positive_flows:
         :param negative_flows:
-        :param simulate: Whether generate simulated random flows.
+        :param simulate: Whether generate the simulated random flows.
         :param char_wb: Whether add a space before and after each token.
         :return:
         """
@@ -97,8 +94,7 @@ class Analyzer:
         logger.info('lenNeg: %d', len(negative_flows))
         docs = Analyzer.gen_docs(positive_flows, char_wb)
         docs = docs + (Analyzer.gen_docs(negative_flows, char_wb))
-        if simulate:
-            if len(negative_flows) == 0:
+        if simulate and len(negative_flows) == 0:
                 docs = docs + Learner.simulate_flows(len(positive_flows), 0)
         samples = []
         samples_num = []

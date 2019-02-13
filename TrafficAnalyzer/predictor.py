@@ -42,11 +42,29 @@ def predict(model_path: str, vec_path: str, data_dir_path: str, numeric: bool):
     # Prediction.
     res = model.predict(X)
     pos_ind = np.where(res == 1)[0]
+    neg_ind = np.where(res == 0)[0]
     logger.info(res)
     logger.info(pos_ind)
     logger.info(len(pos_ind))
-    for i in range(0, 100):
-        logger.info(test_flows[pos_ind[i]]['pcap'])
+    for i in range(0, 50):
+        ind = pos_ind[i]
+        flow = test_flows[ind]
+        logger.debug([flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
+                      flow['up_stat'], flow['down_stat']])
+        logger.info(flow['pcap'])
+        logger.info(flow['url'])
+        logger.debug(numeric_fea[ind])
+        logger.debug(X[ind])
+    logger.info("-----------------------------------------------------------------------------------")
+    for i in range(0, 50):
+        ind = neg_ind[i]
+        flow = test_flows[ind]
+        logger.debug([flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
+                      flow['up_stat'], flow['down_stat']])
+        logger.info(flow['pcap'])
+        logger.info(flow['url'])
+        logger.debug(numeric_fea[ind])
+        logger.debug(X[ind])
 
 
 if __name__ == '__main__':
