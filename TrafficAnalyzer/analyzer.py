@@ -19,6 +19,12 @@ logger = set_logger('Analyzer', 'INFO')
 
 
 class Analyzer:
+    # We currently do not consider indirect leakage in positive samples.
+    # Indirect leakage: first leverage legal map sdk to get position description (such as city name),
+    # then transfer the description out.
+    filtered_pos_urls = ['loc.map.baidu.com', 'abroad.apilocate.amap.com', 'maps.googleapis.com',
+                                                                           'api.map.baidu.com']
+
     @staticmethod
     def pred_pos_contexts(pred_contexts_path):
         """
@@ -38,10 +44,11 @@ class Analyzer:
             return pred_pos
 
     @staticmethod
-    def sens_flow_jsons(contexts: [dict]) -> []:
+    def sens_flow_jsons(contexts: [{}], filtered_urls: [] = None) -> []:
         """
         Given contexts, get the corresponding sens_http_flows.json specified in context['dir'] field.
         :param contexts:
+        :param filtered_urls: Ignore the flows who follow the rules specified inside.
         :return:
         """
         jsons = []
@@ -54,6 +61,14 @@ class Analyzer:
                         with open(os.path.join(root, file), 'r', encoding="utf8", errors='ignore') as infile:
                             flows = json.load(infile)
                             for flow in flows:
+                                if filtered_urls is not None:
+                                    ignore = False
+                                    for url in filtered_urls:
+                                        if url in flow['url']:
+                                            ignore = True
+                                            break
+                                    if ignore:
+                                        continue
                                 # The ground truth label, which is defined by "context" label.
                                 flow['real_label'] = context['label']
                                 jsons.append(flow)
@@ -73,6 +88,9 @@ class Analyzer:
             line = flow['url']
             label = 1 if flow['label'] == '1' else 0
             real_label = 1 if flow['real_label'] == '1' else 0
+            if real_label != label:
+                logger.info("Flow's real label does not match the training label for %s, real_label = %d label = %d",
+                            flow['url'], real_label, label)
             numeric = [flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
                        flow['up_stat'], flow['down_stat']]
             docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb))
@@ -95,7 +113,7 @@ class Analyzer:
         docs = Analyzer.gen_docs(positive_flows, char_wb)
         docs = docs + (Analyzer.gen_docs(negative_flows, char_wb))
         if simulate and len(negative_flows) == 0:
-                docs = docs + Learner.simulate_flows(len(positive_flows), 0)
+            docs = docs + Learner.simulate_flows(len(positive_flows), 0)
         samples = []
         samples_num = []
         labels = []
@@ -230,14 +248,14 @@ class Analyzer:
                 X_test = np.row_stack([X_test.toarray(), X_neg.toarray()])
                 y_neg = -1 * np.ones(X_neg.shape[0])
                 y_test = np.concatenate((y_test, y_neg), axis=0)
-                y_train_true = real_pos[train_index]
+                # y_train_true = real_pos[train_index]
                 grid = {'gamma': np.logspace(-9, 3, 13),
                         'nu': np.linspace(0.01, 0.99, 99)}
                 search = GridSearchCV(algorithm, grid, iid=False, cv=5,
                                       return_train_score=False, scoring='accuracy')
                 search.fit(X_train, y_train)
-                print("Best parameter (CV score=%0.3f):" % search.best_score_)
-                print(search.best_params_)
+                logger.debug("Best parameter (CV score=%0.3f):" % search.best_score_)
+                logger.debug(search.best_params_)
                 # train the classifier
                 # TODO nu should be determined by the context classification results:
                 #  the percentage of neg flows appeared under pos contexts.
@@ -249,8 +267,8 @@ class Analyzer:
                 # for i in range(len(real_labels)):
                 #     added = np.array([test_index.shape[0]])
                 #     test_index = np.concatenate((test_index, added), axis=0)
-                print(y_plabs)
-                print(y_test)
+                logger.debug(y_plabs)
+                logger.debug(y_test)
                 accuracy, precision, recall, f_score = Analyzer.metrics(y_plabs, y_test, label_type=-1)
                 logger.info("Accuracy: %f", accuracy)
                 result['f_score'] = f_score
@@ -313,7 +331,7 @@ def preprocess(negative_pcap_dir, sub_dir_name=''):
     contexts_dir = os.path.join("../AppInspector/data/", sub_dir_name)
     logger.info('The contexts are stored at %s', os.path.abspath(contexts_dir))
     contexts = Analyzer.pred_pos_contexts(contexts_dir)
-    positive_flows = Analyzer.sens_flow_jsons(contexts)
+    positive_flows = Analyzer.sens_flow_jsons(contexts, Analyzer.filtered_pos_urls)
     for flow in positive_flows:
         # The label given by the prediction of AppInspector, may not be as same as the ground truth.
         flow['label'] = '1'
@@ -373,7 +391,7 @@ if __name__ == '__main__':
     else:
         penalty = 'l2'
     logger.info('--------------------Logistic Regression-------------------')
-    clf = LogisticRegression(class_weight='balanced', penalty=penalty)
+    clf = LogisticRegression(solver='liblinear', penalty=penalty, class_weight='balanced')
     Analyzer.cross_validation(X, y, true_labels, clf)
     if args.save_dir_path != '':
         clf.fit(X, y)
