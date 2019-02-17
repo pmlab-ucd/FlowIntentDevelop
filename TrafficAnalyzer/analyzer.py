@@ -175,8 +175,15 @@ class Analyzer:
         folds = Learner.n_folds(X, y, fold=fold)
         results = dict()
         results['fold'] = []
-        scores = []
-        true_scores = []
+        res = dict()
+        res['scores'] = []
+        res['true_scores'] = []
+        res['precision'] = []
+        res['true_precision'] = []
+        res['recall'] = []
+        res['true_recall'] = []
+        scores = res['scores']
+        true_scores = res['true_scores']
         for fold in folds:
             result = dict()
             train_index = fold['train_index']
@@ -195,7 +202,11 @@ class Analyzer:
                                                                     label_type=label_type)
             logger.info("Accuracy: %f", accuracy)
             result['f_score'] = f_score
+            result['precision'] = precision
+            result['recall'] = recall
             results['fold'].append(result)
+            res['precision'].append(precision)
+            res['recall'].append(recall)
             scores.append(f_score)
             logger.info("F-score: %f Precision: %f Recall: %f", f_score, precision, recall)
             # train the classifier
@@ -207,10 +218,22 @@ class Analyzer:
             logger.info("True Accuracy: %f", accuracy)
             logger.info("True F-score: %f Precision: %f Recall: %f", f_score, precision, recall)
             true_scores.append(f_score)
+            res['true_precision'].append(precision)
+            res['true_recall'].append(recall)
         results['mean_scores'] = np.mean(scores)
         results['std_scores'] = np.std(scores)
+        results['mean_precision'] = np.mean(res['precision'])
+        results['mean_recall'] = np.mean(res['recall'])
+        results['true_mean_scores'] = np.mean(true_scores)
+        results['true_mean_precision'] = np.mean(res['true_precision'])
+        results['true_mean_recall'] = np.mean(res['true_recall'])
+        logger.info('\n')
         logger.info('mean score: %f', results['mean_scores'])
-        logger.info('true mean score: %f', np.mean(true_scores))
+        logger.info('true mean score: %f', results['true_mean_scores'])
+        logger.info('mean precision: %f', results['mean_precision'])
+        logger.info('true mean precision: %f', results['true_mean_precision'])
+        logger.info('mean recall: %f', results['mean_recall'])
+        logger.info('true mean recall: %f\n', results['true_mean_recall'])
         return results
 
     @staticmethod
@@ -386,17 +409,15 @@ if __name__ == '__main__':
         gen_neg_flow_jsons(neg_pcap_dir, args.proc_num)
     pos_flows, neg_flows = preprocess(neg_pcap_dir, sub_dir_name=args.sub_dir)
     text_fea, numeric_fea, y, true_labels = Analyzer.gen_instances(pos_flows, neg_flows, char_wb=False, simulate=False)
-    solver = 'liblinear'
+    solver = 'newton-cg'  # 'liblinear'
+    penalty = 'l2'
     if not args.numeric:
         X, feature_names, vec = Learner.LabelledDocs.vectorize(text_fea, tf=False)
-        penalty = 'l1'
         if args.all_feature:
             X = X.toarray()
             X = np.hstack([X, numeric_fea])
     else:
         X = np.hstack([numeric_fea])
-        penalty = 'l2'
-        solver = 'newton-cg'
     logger.info('--------------------Logistic Regression-------------------')
     if penalty is None or penalty == '':
         clf = LogisticRegression(solver=solver, class_weight='balanced', C=1e42)
