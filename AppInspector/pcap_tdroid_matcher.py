@@ -185,7 +185,7 @@ def clean_folder(work_dir: str) -> None:
                 # Clean the hierarchy xml (and other relevant data) whose content does not contain any app UI.
                 xml_path = os.path.join(root, fn)
                 try:
-                    with open(xml_path, 'rb', encoding="utf8", errors='ignore') as f:
+                    with open(xml_path, 'r', encoding="utf8", errors='ignore') as f:
                         others = []
                         android = False
                         data = f.read()

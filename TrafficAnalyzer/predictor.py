@@ -54,7 +54,7 @@ def analyze(logistic, res: [], X, flows: [{}], feature_names: []):
     logger.info(len(pos_ind))
     coefficients = pd.concat([pd.DataFrame(feature_names), pd.DataFrame(np.transpose(logistic.coef_))], axis=1)
     logger.info(coefficients)
-    for i in range(0, 50):
+    for i in range(0, len(pos_ind)):
         ind = pos_ind[i]
         flow = flows[ind]
         logger.debug([flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],

@@ -138,7 +138,7 @@ def http_trace(pcap, stream_index=0, label='', matching_funcs=None, args=None):
 
 
 def flows2json(sub_dir, filename, label=None, filter_funcs=None, args=None,
-               fn_filter='filter', json_ext='_sens_http_flows.json'):
+               fn_filter=None, json_ext='_sens_http_flows.json'):
     if (fn_filter is None or fn_filter not in filename) and filename.endswith('.pcap'):
         sub_flows = []
         pcap_path = os.path.join(sub_dir, filename)
