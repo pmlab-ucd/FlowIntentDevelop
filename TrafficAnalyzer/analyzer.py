@@ -22,8 +22,7 @@ class Analyzer:
     # We currently do not consider indirect leakage in positive samples.
     # Indirect leakage: first leverage legal map sdk to get position description (such as city name),
     # then transfer the description out.
-    filtered_pos_urls = ['loc.map.baidu.com', 'abroad.apilocate.amap.com', 'maps.googleapis.com',
-                                                                           'api.map.baidu.com']
+    map_sdk_urls = ['map.baidu.com', 'amap.com', 'maps.googleapis.com']
 
     @staticmethod
     def pred_pos_contexts(pred_contexts_path):
@@ -331,7 +330,7 @@ def preprocess(negative_pcap_dir, sub_dir_name=''):
     contexts_dir = os.path.join("../AppInspector/data/", sub_dir_name)
     logger.info('The contexts are stored at %s', os.path.abspath(contexts_dir))
     contexts = Analyzer.pred_pos_contexts(contexts_dir)
-    positive_flows = Analyzer.sens_flow_jsons(contexts, Analyzer.filtered_pos_urls)
+    positive_flows = Analyzer.sens_flow_jsons(contexts, Analyzer.map_sdk_urls)
     for flow in positive_flows:
         # The label given by the prediction of AppInspector, may not be as same as the ground truth.
         flow['label'] = '1'
