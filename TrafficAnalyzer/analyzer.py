@@ -24,6 +24,8 @@ class Analyzer:
     # then transfer the description out.
     map_sdk_urls = ['map.baidu.com', 'amap.com', 'maps.googleapis.com']
 
+    generic_url_words = ['cn', 'com', 'net']
+
     @staticmethod
     def pred_pos_contexts(pred_contexts_path):
         """
@@ -92,7 +94,8 @@ class Analyzer:
                             flow['url'], real_label, label)
             numeric = [flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
                        flow['up_stat'], flow['down_stat']]
-            docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb))
+            docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb,
+                                             filtered_words=Analyzer.generic_url_words))
         return docs
 
     @staticmethod

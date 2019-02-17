@@ -112,7 +112,7 @@ class Learner:
             # stems = self.stem_tokens(tokens, stemmer)
             return tokens
 
-        def __init__(self, doc, label, numeric_features=None, real_label=None, char_wb=False):
+        def __init__(self, doc, label, numeric_features=None, real_label=None, char_wb=False, filtered_words: [] = None):
             """
             Create a instance representing a text string to be used by ML.
             :param doc: The text string.
@@ -120,8 +120,12 @@ class Learner:
             :param numeric_features: The numeric feature values.
             :param real_label: The ground truth label of this instance.
             :param char_wb: Used to n-grams only from characters inside word boundaries (padded with space on each side)
+            :param filtered_words: Filter doc based on the given list.
             https://scikit-learn.org/stable/modules/feature_extraction.html#limitations-of-the-bag-of-words-representation
             """
+            if filtered_words is not None:
+                for word in filtered_words:
+                    doc = doc.replace(word, ' ')
             self.doc = doc
             self.label = label
             self.real_label = real_label
