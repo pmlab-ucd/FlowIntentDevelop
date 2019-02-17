@@ -360,7 +360,7 @@ if __name__ == '__main__':
     parser.add_argument("-j", "--json", dest="gen_json", action='store_true',
                         help="if the jsons of the negative flows are not generated, generate")
     parser.add_argument("-n", "--numeric", dest="numeric", action='store_true',
-                        help="whether use numeric features, which needs more memory")
+                        help="use numeric features only")
     parser.add_argument("-l", "--log", dest="log", default='INFO',
                         help="the log level, such as INFO, DEBUG")
     parser.add_argument("-p", "--proc", dest="proc_num", default=4,
@@ -373,6 +373,8 @@ if __name__ == '__main__':
                         help="save the predictor to which directory")
     parser.add_argument("-f", "--fname", dest="fname", default='test',
                         help="the file name of the saved stuff")
+    parser.add_argument("-a", "--all", dest="all_feature", action='store_true',
+                        help="use both statistical and lexical features, which needs more memory")
     args = parser.parse_args()
 
     if args.log != 'INFO':
@@ -383,17 +385,23 @@ if __name__ == '__main__':
     if args.gen_json:
         gen_neg_flow_jsons(neg_pcap_dir, args.proc_num)
     pos_flows, neg_flows = preprocess(neg_pcap_dir, sub_dir_name=args.sub_dir)
-
     text_fea, numeric_fea, y, true_labels = Analyzer.gen_instances(pos_flows, neg_flows, char_wb=False, simulate=False)
-    X, feature_names, vec = Learner.LabelledDocs.vectorize(text_fea, tf=False)
-    if args.numeric:
-        X = X.toarray()
-        X = np.hstack([X, numeric_fea])
+    solver = 'liblinear'
+    if not args.numeric:
+        X, feature_names, vec = Learner.LabelledDocs.vectorize(text_fea, tf=False)
         penalty = 'l1'
+        if args.all_feature:
+            X = X.toarray()
+            X = np.hstack([X, numeric_fea])
     else:
+        X = np.hstack([numeric_fea])
         penalty = 'l2'
+        solver = 'newton-cg'
     logger.info('--------------------Logistic Regression-------------------')
-    clf = LogisticRegression(solver='liblinear', penalty=penalty, class_weight='balanced')
+    if penalty is None or penalty == '':
+        clf = LogisticRegression(solver=solver, class_weight='balanced', C=1e42)
+    else:
+        clf = LogisticRegression(solver=solver, penalty=penalty, class_weight='balanced')
     Analyzer.cross_validation(X, y, true_labels, clf)
     if args.save_dir_path != '':
         clf.fit(X, y)
@@ -402,10 +410,11 @@ if __name__ == '__main__':
         with open(model_path, 'wb') as fid:
             pickle.dump(clf, fid)
             logger.info('The predictor is saved at %s', os.path.abspath(model_path))
-        vec_path = os.path.join(args.save_dir_path, args.fname + '.vec')
-        with open(vec_path, 'wb') as fid:
-            pickle.dump(vec, fid)
-            logger.info('The predictor is saved at %s', os.path.abspath(vec_path))
+        if not args.numeric:
+            vec_path = os.path.join(args.save_dir_path, args.fname + '.vec')
+            with open(vec_path, 'wb') as fid:
+                pickle.dump(vec, fid)
+                logger.info('The predictor is saved at %s', os.path.abspath(vec_path))
     if args.unsupervised:
         logger.info('--------------------Unsupervised Learning-------------------')
         Analyzer.anomaly_detection(X, y, true_labels)

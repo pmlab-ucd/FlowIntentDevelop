@@ -88,10 +88,10 @@ if __name__ == '__main__':
                         help="is it needed to first generate http_flows.json?")
     parser.add_argument("-p", "--proc", dest="proc_num", default=4,
                         help="the number of processes used in multiprocessing")
-    parser.add_argument("-n", "--numeric", dest="numeric", action='store_true',
-                        help="whether use numeric features, which needs more memory")
+    parser.add_argument("-a", "--all", dest="all_feature", action='store_true',
+                        help="whether also use numeric features, which needs more memory")
     args = parser.parse_args()
     if args.jsons:
         logger.info('Generate flow jsons ...')
         gen_neg_flow_jsons(args.data, args.proc_num, has_sub_dir=True)
-    predict(args.model, args.vec, args.data, args.numeric)
+    predict(args.model, args.vec, args.data, args.all_feature)
