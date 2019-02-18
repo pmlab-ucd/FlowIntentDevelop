@@ -14,6 +14,8 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.model_selection import GridSearchCV
 import pickle
+from urllib.parse import urlparse
+import re
 
 logger = set_logger('Analyzer', 'INFO')
 
@@ -24,7 +26,19 @@ class Analyzer:
     # then transfer the description out.
     map_sdk_urls = ['map.baidu.com', 'amap.com', 'maps.googleapis.com']
 
-    generic_url_words = ['cn', 'com', 'net']
+    @staticmethod
+    def filter_url_words(url: str):
+        parsed_uri = urlparse(url)
+        host = parsed_uri.netloc.rsplit('.', 1)[0]  # this will remove url extensions, such as "com", "cn", etc
+        path = parsed_uri.path
+        query = parsed_uri.query
+        float_pattern = re.compile('^.*[0-9]\\.[0-9]*')
+        if re.match(float_pattern, query) is not None or re.match(float_pattern, path):
+            # check whether the query/path contains float number, which could be a longitude/latitude.
+            query += '_hasfloat'
+        path = ''.join([i for i in path if not i.isdigit()])  # remove the digits in path
+        query = ''.join([i for i in query if not i.isdigit()])  # remove the digits in query
+        return host + path + '?' + query
 
     @staticmethod
     def pred_pos_contexts(pred_contexts_path):
@@ -86,7 +100,7 @@ class Analyzer:
         """
         docs = []
         for flow in jsons:
-            line = flow['url']
+            line = Analyzer.filter_url_words(flow['url'])
             label = 1 if flow['label'] == '1' else 0
             real_label = 1 if flow['real_label'] == '1' else 0
             if real_label != label:
@@ -94,8 +108,7 @@ class Analyzer:
                             flow['url'], real_label, label)
             numeric = [flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
                        flow['up_stat'], flow['down_stat']]
-            docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb,
-                                             filtered_words=Analyzer.generic_url_words))
+            docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb))
         return docs
 
     @staticmethod
