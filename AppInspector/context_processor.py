@@ -69,7 +69,7 @@ class ContextProcessor:
 
             os.makedirs(neg_out_dir)
             neg_instances = contexts(neg_dir)
-            logger.info('neg: ' + str(len(neg_instances)))
+            logger.info('neg: %d', len(neg_instances))
             for instance in neg_instances:
                 with open(os.path.join(neg_out_dir, instance.id + '.json'), 'w', encoding="utf8") as outfile:
                     outfile.write(instance.json())
@@ -144,7 +144,7 @@ class ContextProcessor:
                 fold['train_index'] = fold['train_index'].tolist()
                 fold['test_index'] = fold['test_index'].tolist()
             # pd.Series(folds).to_json(json_file, orient='values')
-            logger.info(len(folds))
+            logger.info('The number of folds: %d', len(folds))
             json.dump(folds, json_file)
 
         with open(os.path.join(contexts_dir, 'voting_res.json'), 'w') as json_file:

@@ -15,7 +15,6 @@ class Context:
     """
     App-level context of each running text_fea collected.
     """
-
     word_topics = {'topic_health': [u'健身', u'运动', u'健康', u'体重', u'身体', u'锻炼'],
                    'topic_sports': [u'足球', u'队员', u'篮球', u'跑步'],
                    'topic_weather': [u'天气', u'预报', u'温度', u'湿度', 'PM2\\.5'],
@@ -68,7 +67,7 @@ def hierarchy_xml(xml_path):
     doc = []
     if os.path.exists(xml_path):
         try:
-            with open(xml_path, 'rb') as f:
+            with open(xml_path, 'rb', errors='ignore') as f:
                 dom = parseString(f.read())
                 nodes = dom.getElementsByTagName('node')
                 # Iterate over all the uses-permission nodes
@@ -81,10 +80,10 @@ def hierarchy_xml(xml_path):
                         all_views.append(node)
                 logger.debug(doc)
         except Exception as e:
-            logger.warn(e)
-            logger.warn(xml_path)
+            logger.warning(e)
+            logger.warning(xml_path)
     else:
-        logger.warn('XML ' + xml_path + ' does not exist!')
+        logger.warning('XML %s does not exist!', xml_path)
     return all_views, doc
 
 
@@ -98,7 +97,7 @@ def contexts(app_cxt_rdir):
     for root, dirs, files in os.walk(app_cxt_rdir):
         logger.info(app_cxt_rdir)
         for dir_name in dirs:
-            logger.info(dir_name)
+            logger.info('processing %s', dir_name)
             if len(find_xmls(os.path.join(root, dir_name))) > 0:
                 collection.append(Context(os.path.join(root, dir_name), label))
     return collection
@@ -116,7 +115,7 @@ def description(html):
     category = ''
     app_name = ''
     try:
-        soup = BeautifulSoup(open(html, 'r', encoding="utf8"), "html.parser")
+        soup = BeautifulSoup(open(html, 'r', encoding="utf8", errors='ignore'), "html.parser")
         app_name_soup = BeautifulSoup(str(soup.select('.app-name')), "html.parser")
         app_name = app_name_soup.span.string
         category_soup = BeautifulSoup(str(soup.select('.nav')), "html.parser")
@@ -166,7 +165,7 @@ if __name__ == '__main__':
     print(json.loads(instance.json()))
     with open('test.json', 'w', encoding="utf8") as outfile:
         outfile.write(instance.json())
-    with open('test.json', 'r', encoding="utf8") as outfile:
+    with open('test.json', 'r', encoding="utf8", errors='ignore') as outfile:
         data = json.load(outfile)
         print(data)
 
@@ -184,6 +183,6 @@ if __name__ == '__main__':
         for root, dirs, files in os.walk(instances_dir_path):
             for file_name in files:
                 if file_name.endswith('.json'):
-                    with open(os.path.join(root, file_name), 'r', encoding="utf8") as my_file:
+                    with open(os.path.join(root, file_name), 'r', encoding="utf8", errors='ignore') as my_file:
                         instance = Object(json.load(my_file))
                         instances.append(instance)
