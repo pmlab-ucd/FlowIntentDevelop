@@ -35,7 +35,7 @@ class Context:
         self.xml = ''
         if self.html:
             self.topic, self.app_name = description(self.html)
-            logger.debug(self.topic, self.app_name)
+            logger.debug('%s, %s', self.topic, self.app_name)
         # Parse user interfaces
         xmls = find_xmls(data_dir)
         length = 0
