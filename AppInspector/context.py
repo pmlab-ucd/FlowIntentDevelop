@@ -143,7 +143,7 @@ def description(html):
         for topic in sorted(topic_word_counter, key=topic_word_counter.get, reverse=True):
             return [topic, app_name]
     except Exception as e:
-        logger.warn(e)
+        logger.warning(e)
         return [category, app_name]
 
 

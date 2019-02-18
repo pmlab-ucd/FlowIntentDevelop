@@ -99,8 +99,8 @@ class ContextProcessor:
         docs, y = ContextProcessor.docs(instances)
         # Transform the strings into the np array.
         train_data, voc, vec = Learner.LabelledDocs.vectorize(docs)
-        logger.info('neg: ' + str(len(np.where(y == 0)[0])))
-        logger.info('pos: ' + str(len(np.where(y == 1)[0])))
+        logger.info('neg: %d', len(np.where(y == 0)[0]))
+        logger.info('pos: %d', len(np.where(y == 1)[0]))
         # Split the data set into 10 folds.
         folds = Learner.n_folds(train_data, y, fold=10)  # [Fold(f) for f in Learner.n_folds(train_data, y, fold=10)]
         """
@@ -136,9 +136,9 @@ class ContextProcessor:
                 if 'fp_item' not in fold:
                     continue
                 for fp in fold['fp_item']:
-                    logger.debug('FP:' + str(instances[fp].ui_doc) + "," + instances[fp].topic)
+                    logger.debug('FP: %s, %s', str(instances[fp].ui_doc), instances[fp].topic)
                 for fn in fold['fn_item']:
-                    logger.debug('FN:' + str(instances[fn].ui_doc) + "," + instances[fn].topic)
+                    logger.debug('FN: %s, %s', str(instances[fn].ui_doc), instances[fn].topic)
         with open(os.path.join(contexts_dir, 'folds.json'), 'w') as json_file:
             for fold in folds:
                 fold['train_index'] = fold['train_index'].tolist()
