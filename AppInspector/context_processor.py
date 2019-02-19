@@ -131,7 +131,7 @@ class ContextProcessor:
         res = Learner.voting(clfs, train_data, y, folds)
         for clf in clfs:
             clf_name = type(clf).__name__
-            logger.debug('CLF:' + clf_name)
+            logger.debug('CLF: %s', clf_name)
             for fold in res[clf_name]:
                 if 'fp_item' not in fold:
                     continue
@@ -160,7 +160,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         reset = True if '-r' in sys.argv else reset
     logger.setLevel(logging.DEBUG)
-    logger.info('The data stored at: ', root)
+    logger.info('The data stored at: %s', root)
     learner.logger.setLevel(logging.INFO)
     samples, samples_dir = ContextProcessor.process(root, reset_out_dir=reset, sub_dir_name=str(os.path.basename(root)))
     ContextProcessor.train(samples, samples_dir)
