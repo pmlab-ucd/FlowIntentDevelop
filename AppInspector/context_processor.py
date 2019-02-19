@@ -124,7 +124,7 @@ class ContextProcessor:
         clf = LogisticRegression(class_weight='balanced')
         Learner.cross_validation(clf, folds)
         """
-        # Wrap a bunch of classifiers and let them voting on each fold.
+        # Wrap a bunch of classifiers and let them vote on every fold.
         clfs = [svm.SVC(kernel='linear', class_weight='balanced', probability=True),
                 RandomForestClassifier(class_weight='balanced'),
                 LogisticRegression(class_weight='balanced')]

@@ -72,21 +72,22 @@ class Analyzer:
             logger.debug(context_dir)
             for root, dirs, files in os.walk(context_dir):
                 for file in files:
-                    if file.endswith('_sens_http_flows.json'):
-                        with open(os.path.join(root, file), 'r', encoding="utf8", errors='ignore') as infile:
-                            flows = json.load(infile)
-                            for flow in flows:
-                                if filtered_urls is not None:
-                                    ignore = False
-                                    for url in filtered_urls:
-                                        if url in flow['url']:
-                                            ignore = True
-                                            break
-                                    if ignore:
-                                        continue
-                                # The ground truth label, which is defined by "context" label.
-                                flow['real_label'] = context['label']
-                                jsons.append(flow)
+                    if not file.endswith('_sens_http_flows.json'):
+                        continue
+                    with open(os.path.join(root, file), 'r', encoding="utf8", errors='ignore') as infile:
+                        flows = json.load(infile)
+                        for flow in flows:
+                            if filtered_urls is not None:
+                                ignore = False
+                                for url in filtered_urls:
+                                    if url in flow['url']:
+                                        ignore = True
+                                        break
+                                if ignore:
+                                    continue
+                            # The ground truth label, which is defined by "context" label.
+                            flow['real_label'] = context['label']
+                            jsons.append(flow)
         logger.info('The number of flows: %d', len(jsons))
         return jsons
 

@@ -112,7 +112,8 @@ class Learner:
             # stems = self.stem_tokens(tokens, stemmer)
             return tokens
 
-        def __init__(self, doc, label, numeric_features=None, real_label=None, char_wb=False, filtered_words: [] = None):
+        def __init__(self, doc, label, numeric_features=None, real_label=None, char_wb=False,
+                     filtered_words: [] = None):
             """
             Create a instance representing a text string to be used by ML.
             :param doc: The text string.
@@ -386,9 +387,9 @@ class Learner:
             results = Learner.cross_validation(clf, train_data, labels, folds=folds)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
-            logger.info('Tree: ' + str(results['duration']))
-            logger.info('mean scores:' + str(results['mean_scores']))
-            logger.info('mean_conf:' + str(results['mean_conf_mat']))
+            logger.info('Tree: %.2f', results['duration'])
+            logger.info('mean scores: %.2f', results['mean_scores'])
+            logger.info('mean_conf: %.2f', results['mean_conf_mat'])
 
         # Fit the forest to the training set, using the bag of words as
         # features and the sentiment labels as the response variable
@@ -549,13 +550,13 @@ class Learner:
         t0 = time()
         results = dict()
         scores = []
-        conf_mat = np.zeros((2, 2))  # Binary classification
+        conf_mat = np.zeros((2, 2))  # Confusion matrix for binary classification
 
         # Start the cross validation
         for clf in clfs:
             clf_name = type(clf).__name__
             results[clf_name] = []
-            logger.debug(clf_name + ': ')
+            logger.debug('clf: %s', clf_name)
             for fold in folds:
                 result = dict()
                 train_index = fold['train_index']
@@ -591,7 +592,7 @@ class Learner:
                 conf_mat += confusion
                 result['conf_mat'] = confusion.tolist()
 
-                # collect indices of false positive and negatives, effective only shuffle=False,
+                # Collect indices of false positive and negatives, effective only shuffle=False,
                 # or backup the original data
                 if not isinstance(clf, svm.OneClassSVM):
                     fp_i = np.where((y_plabs == 1) & (y_test == 0))[0]
@@ -601,9 +602,9 @@ class Learner:
                 results[clf_name].append(result)
                 logger.debug('fold: ')
                 fps = result['fp_item']
-                logger.debug("FP:" + str(fps))
+                logger.debug("FP: %s", str(fps))
                 fns = result['fn_item']
-                logger.debug("FN:" + str(fns))
+                logger.debug("FN: %s", str(fns))
             # cv_res = cross_val_score(clf, data, labels, cv=cv, scoring='f1').tolist()
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
@@ -616,21 +617,21 @@ class Learner:
             results['mean_scores'] = np.mean(scores)
             results['std_scores'] = np.std(scores)
             conf_mat /= len(folds)
-            # print "Mean CM: \n", conf_mat
+            logger.info("Mean CM: %f \n", conf_mat)
 
-            # print "\nMean classification measures: \n"
+            logger.info("\nMean classification measures: \n")
             results['mean_conf_mat'] = Learner.class_report(conf_mat)
             # return scores, conf_mat, {'fp': sorted(false_pos), 'fn': sorted(false_neg)}
-            logger.info(str(clf) + ': ' + str(results['duration']))
-            logger.info('mean scores:' + str(results['mean_scores']))
-            logger.info('mean_conf:' + str(results['mean_conf_mat']))
+            logger.info('duration of %s: %0.2f', str(clf), results['duration'])
+            logger.info('mean scores: %0.2f', results['mean_scores'])
+            logger.info('mean_conf: %.2f', results['mean_conf_mat'])
 
         for i in range(0, len(folds)):
             overlap_predicted_pos_i = set()
             for j in range(0, len(clfs)):
                 clf_name = type(clfs[j]).__name__
                 items = results[clf_name][i]['predicted_1']
-                # log.info("num:" + str(len(items)))
+                logger.debug("num: %d", len(items))
                 if j == 0:
                     for item in items:
                         overlap_predicted_pos_i.add(int(item))
@@ -643,7 +644,7 @@ class Learner:
                         if item in tmp:
                             another_tmp.add(item)
                     overlap_predicted_pos_i = another_tmp
-            # log.debug(len(overlap_predicted_neg_i))
+            # logger.debug(len(overlap_predicted_neg_i))
             folds[i]['vot_pred_pos'] = list(overlap_predicted_pos_i)
         return results
 
