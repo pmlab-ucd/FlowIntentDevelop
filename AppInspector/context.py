@@ -67,15 +67,13 @@ def hierarchy_xml(xml_path):
     doc = []
     if os.path.exists(xml_path):
         try:
-            with open(xml_path, 'rb', errors='ignore') as f:
+            with open(xml_path, 'rb') as f:
                 dom = parseString(f.read())
                 nodes = dom.getElementsByTagName('node')
                 # Iterate over all the uses-permission nodes
                 for node in nodes:
                     if node.getAttribute('text') != '':
                         doc.append(node.getAttribute('text'))
-                    # print(node.getAttribute('text'))
-                    # print(node.toxml())
                     if node.getAttribute('package') in str(xml_path):
                         all_views.append(node)
                 logger.debug(doc)

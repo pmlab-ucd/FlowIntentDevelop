@@ -617,14 +617,14 @@ class Learner:
             results['mean_scores'] = np.mean(scores)
             results['std_scores'] = np.std(scores)
             conf_mat /= len(folds)
-            logger.info("Mean CM: %f \n", conf_mat)
+            logger.info("Mean CM: %s \n", str(conf_mat))
 
             logger.info("\nMean classification measures: \n")
             results['mean_conf_mat'] = Learner.class_report(conf_mat)
             # return scores, conf_mat, {'fp': sorted(false_pos), 'fn': sorted(false_neg)}
             logger.info('duration of %s: %0.2f', str(clf), results['duration'])
             logger.info('mean scores: %0.2f', results['mean_scores'])
-            logger.info('mean_conf: %.2f', results['mean_conf_mat'])
+            logger.info('mean_conf: %s', str(results['mean_conf_mat']))
 
         for i in range(0, len(folds)):
             overlap_predicted_pos_i = set()

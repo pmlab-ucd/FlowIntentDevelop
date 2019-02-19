@@ -79,13 +79,14 @@ class ContextProcessor:
         for dir_path in [pos_out_dir, neg_out_dir]:
             for root, dirs, files in os.walk(dir_path):
                 for file_name in files:
-                    if file_name.endswith('.json'):
-                        with open(os.path.join(root, file_name), 'r', encoding="utf8") as my_file:
-                            instance = json.load(my_file)
-                            instances_dict.append(instance)
-                            instance = Object(instance)
-                            logger.debug(instance.dir)
-                            instances.append(instance)
+                    if not file_name.endswith('.json'):
+                        continue
+                    with open(os.path.join(root, file_name), 'r', encoding="utf8") as my_file:
+                        instance = json.load(my_file)
+                        instances_dict.append(instance)
+                        instance = Object(instance)
+                        logger.debug(instance.dir)
+                        instances.append(instance)
         with open(os.path.join(contexts_dir, 'contexts.json'), 'w', encoding="utf8") as outfile:
             json.dump(instances_dict, outfile)
             logger.info("Generate contexts.json at %s", str(os.path.curdir))
