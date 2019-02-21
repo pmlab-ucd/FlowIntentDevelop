@@ -108,11 +108,17 @@ def contexts(app_cxt_rdir):
                         # self.views = views
                         ui_doc = doc
                         length = len(views)
-                collection.append(Context(os.path.join(root, dir_name), label, xml=final_xml, ui_doc=ui_doc))
+                cxt = Context(os.path.join(root, dir_name), label, xml=final_xml, ui_doc=ui_doc)
+                if len(cxt.ui_doc) == 0 and len(cxt.app_name) == 0 and len(cxt.topic) == 0:
+                    continue
+                collection.append(cxt)
                 continue
             # To handle new data.
             for xml in xmls:
-                collection.append(Context(os.path.join(root, dir_name), label, xml=xml))
+                cxt = Context(os.path.join(root, dir_name), label, xml=xml)
+                if len(cxt.ui_doc) == 0 and len(cxt.app_name) == 0 and len(cxt.topic) == 0:
+                    continue
+                collection.append(cxt)
     return collection
 
 

@@ -65,7 +65,10 @@ class ContextProcessor:
             doc = []
             for string in instance.ui_doc:
                 doc.append(' '.join(Learner.str2words(str(string))))
-            doc.append(instance.topic)
+            if instance.topic is not '':
+                doc.append(instance.topic + '_t')  # use another feature space
+            if instance.app_name is not '':
+                doc.append(' '.join([i + '_n' for i in Learner.str2words(instance.app_name)]))
             docs.append(' '.join(doc))
             labels.append(int(instance.label))
         return docs, np.array(labels)
@@ -179,9 +182,11 @@ class ContextProcessor:
                 if 'fp_item' not in fold:
                     continue
                 for fp in fold['fp_item']:
-                    logger.debug('FP: %s, %s', str(instances[fp].ui_doc), instances[fp].topic)
+                    logger.debug('FP: %s, %s, %s', str(instances[fp].ui_doc), instances[fp].topic,
+                                 instances[fp].app_name)
                 for fn in fold['fn_item']:
-                    logger.debug('FN: %s, %s', str(instances[fn].ui_doc), instances[fn].topic)
+                    logger.debug('FN: %s, %s, %s', str(instances[fn].ui_doc), instances[fn].topic,
+                                 instances[fn].app_name)
         with open(os.path.join(contexts_dir, 'folds.json'), 'w') as json_file:
             for fold in folds:
                 fold['train_index'] = fold['train_index'].tolist()
