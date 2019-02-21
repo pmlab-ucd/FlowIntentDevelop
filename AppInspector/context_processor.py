@@ -12,6 +12,7 @@ import sys
 import shutil
 import pandas as pd
 import logging
+from multiprocessing import Manager, Pool
 
 logger = set_logger('ContextProcessor')
 
@@ -40,6 +41,21 @@ class ContextProcessor:
         return docs, np.array(labels)
 
     @staticmethod
+    def subprocess_mp_wrapper(args):
+        return ContextProcessor.subprocess(*args)
+
+    @staticmethod
+    def subprocess(dir_path, instances):
+        for root, dirs, files in os.walk(dir_path):
+            for file_name in files:
+                if not file_name.endswith('.json'):
+                    continue
+                with open(os.path.join(root, file_name), 'r', encoding="utf8", errors='ignore') as my_file:
+                    instance = json.load(my_file)
+                    instances.append(instance)
+                    logger.debug(instance['dir'])
+
+    @staticmethod
     def process(root_dir, pos_dir_name='1', neg_dir_name='0', reset_out_dir=False, sub_dir_name=''):
         """
         Given the dataset of legal and illegal sharing text_fea
@@ -63,36 +79,31 @@ class ContextProcessor:
         if not os.path.exists(contexts_dir):
             os.makedirs(pos_out_dir)
             instances = contexts(pos_dir)
+            logger.info('pos: %d', len(instances))
             for instance in instances:
                 with open(os.path.join(pos_out_dir, instance.id + '.json'), 'w', encoding="utf8") as outfile:
                     outfile.write(instance.json())
 
             os.makedirs(neg_out_dir)
-            neg_instances = contexts(neg_dir)
-            logger.info('neg: %d', len(neg_instances))
-            for instance in neg_instances:
+            instances = contexts(neg_dir)
+            logger.info('neg: %d', len(instances))
+            for instance in instances:
                 with open(os.path.join(neg_out_dir, instance.id + '.json'), 'w', encoding="utf8") as outfile:
                     outfile.write(instance.json())
-            instances += neg_instances
-        instances = []
-        instances_dict = []
-        for dir_path in [pos_out_dir, neg_out_dir]:
-            for root, dirs, files in os.walk(dir_path):
-                for file_name in files:
-                    if not file_name.endswith('.json'):
-                        continue
-                    with open(os.path.join(root, file_name), 'r', encoding="utf8") as my_file:
-                        instance = json.load(my_file)
-                        instances_dict.append(instance)
-                        instance = Object(instance)
-                        logger.debug(instance.dir)
-                        instances.append(instance)
+        m = Manager()
+        pos_instances = m.list()
+        neg_instances = m.list()
+        p = Pool(2)
+        p.map(ContextProcessor.subprocess_mp_wrapper,
+              [(pos_out_dir, pos_instances), (neg_out_dir, neg_instances)])
+        p.close()
+        pos_instances.extend(neg_instances)
+        instances = [i for i in pos_instances]
         with open(os.path.join(contexts_dir, 'contexts.json'), 'w', encoding="utf8") as outfile:
-            json.dump(instances_dict, outfile)
+            json.dump(instances, outfile)
             logger.info("Generate contexts.json at %s", str(os.path.curdir))
             # pd.Series(text_fea).to_json(outfile, orient='values')
-
-        return instances, contexts_dir
+        return [Object(ins) for ins in instances], contexts_dir
 
     @staticmethod
     def train(instances, contexts_dir):

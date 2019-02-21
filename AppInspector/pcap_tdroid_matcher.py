@@ -233,24 +233,26 @@ def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
     for root, dirs, files in os.walk(src_dir, topdown=False):
         for filename in files:
             # If the given taint type is identified in flows, means it is a target pkg.
-            if filename.endswith('_sens_http_flows.json'):
-                file_path = os.path.join(root, filename)
-                with open(file_path, 'r', encoding="utf8", errors='ignore') as infile:
-                    flows = json.load(infile)
-                    for flow in flows:
-                        if taint in flow['taint']:
-                            dirname = os.path.basename(os.path.dirname(file_path))
-                            dest_dir = to_dir
-                            if sub_dataset:
-                                dataset_name = os.path.basename(os.path.abspath(os.path.join(root, os.pardir)))
-                                dest_dir = os.path.join(to_dir, dataset_name)
-                            logger.debug('root: ' + root)
-                            logger.debug('dirname:' + dirname)
-                            dest_dir = os.path.join(dest_dir, dirname)
-                            if os.path.exists(dest_dir):
-                                rmtree(dest_dir)
-                            copytree(root, dest_dir)
-                            break
+            if not filename.endswith('_sens_http_flows.json'):
+                continue
+            file_path = os.path.join(root, filename)
+            with open(file_path, 'r', encoding="utf8", errors='ignore') as infile:
+                flows = json.load(infile)
+                for flow in flows:
+                    if taint not in flow['taint']:
+                        continue
+                    dirname = os.path.basename(os.path.dirname(file_path))
+                    dest_dir = to_dir
+                    if sub_dataset:
+                        dataset_name = os.path.basename(os.path.abspath(os.path.join(root, os.pardir)))
+                        dest_dir = os.path.join(to_dir, dataset_name)
+                    logger.debug('root: ' + root)
+                    logger.debug('dirname:' + dirname)
+                    dest_dir = os.path.join(dest_dir, dirname)
+                    if os.path.exists(dest_dir):
+                        rmtree(dest_dir)
+                    copytree(root, dest_dir)
+                    break
 
 
 def extract_flow_pcap(sub_dir, target_taints=None):
@@ -361,7 +363,7 @@ if __name__ == '__main__':
                         help="the full path of the base dir of output directory")
     parser.add_argument("-t", "--taint", dest="taint",
                         help="the taint type, such as Location, IMEI, Address, etc.")
-    parser.add_argument("-d", "--dataset", dest="dataset", default=None,
+    parser.add_argument("-d", "--dataset", dest="dataset", default='',
                         help="the dataset name (sub dir of the base dir)")
     parser.add_argument("-s", "--sub", dest="sub_dir", action='store_true', default=False,
                         help="whether dataset has sub dir")

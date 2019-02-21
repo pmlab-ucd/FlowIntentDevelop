@@ -156,31 +156,3 @@ class Object(object):
     def json(self):
         return json.dumps(self, default=lambda o: o.__dict__,
                           sort_keys=True, indent=4, ensure_ascii=False)
-
-
-if __name__ == '__main__':
-    instance = Context('C:/Users/hao/Documents/Ground/0/5/cn.apps123.shell.jiancaichuangxin', 0)
-    print(json.loads(instance.json()))
-    with open('test.json', 'w', encoding="utf8") as outfile:
-        outfile.write(instance.json())
-    with open('test.json', 'r', encoding="utf8", errors='ignore') as outfile:
-        data = json.load(outfile)
-        print(data)
-
-    root_dir = 'C:/Users/hao/Documents/Ground/0/'
-    instances_dir_name = hashlib.md5(root_dir.encode('utf-8')).hexdigest()
-    instances_dir_path = os.path.join('data', instances_dir_name)
-    if not os.path.exists(instances_dir_path):
-        os.makedirs(instances_dir_path)
-        instances = contexts(root_dir)
-        for instance in instances:
-            with open(os.path.join(instances_dir_path, instance.id + '.json'), 'w', encoding="utf8") as outfile:
-                outfile.write(instance.json())
-    else:
-        instances = []
-        for root, dirs, files in os.walk(instances_dir_path):
-            for file_name in files:
-                if file_name.endswith('.json'):
-                    with open(os.path.join(root, file_name), 'r', encoding="utf8", errors='ignore') as my_file:
-                        instance = Object(json.load(my_file))
-                        instances.append(instance)
