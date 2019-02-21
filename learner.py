@@ -570,6 +570,7 @@ class Learner:
                 predicted = clf.predict(X_test)
                 y_plabs = np.squeeze(predicted)
                 result['predicted_1'] = test_index[np.where(y_plabs == 1)[0]]
+                result['predicted_0'] = test_index[np.where(y_plabs == 0)[0]]
                 if hasattr(clf, 'predict_proba'):
                     y_pprobs = clf.predict_proba(X_test)  # Predicted probability
                     result['roc'] = metrics.roc_auc_score(y_test, y_pprobs[:, 1])
@@ -626,26 +627,32 @@ class Learner:
             logger.info('mean scores: %0.2f', results['mean_scores'])
             logger.info('mean_conf: %s', str(results['mean_conf_mat']))
 
-        for i in range(0, len(folds)):
-            overlap_predicted_pos_i = set()
+        def overlap_pred(overlap_predicted: set, label='1'):
             for j in range(0, len(clfs)):
-                clf_name = type(clfs[j]).__name__
-                items = results[clf_name][i]['predicted_1']
+                c_name = type(clfs[j]).__name__
+                items = results[c_name][i]['predicted_' + label]
                 logger.debug("num: %d", len(items))
                 if j == 0:
                     for item in items:
-                        overlap_predicted_pos_i.add(int(item))
+                        overlap_predicted.add(int(item))
                 else:
                     tmp = set()
                     for item in items:
                         tmp.add(int(item))
                     another_tmp = set()
-                    for item in overlap_predicted_pos_i:
+                    for item in overlap_predicted:
                         if item in tmp:
                             another_tmp.add(item)
-                    overlap_predicted_pos_i = another_tmp
-            # logger.debug(len(overlap_predicted_neg_i))
+                    overlap_predicted = another_tmp
+
+        for i in range(0, len(folds)):
+            overlap_predicted_pos_i = set()
+            overlap_predicted_neg_i = set()
+            overlap_pred(overlap_predicted_pos_i)
+            overlap_pred(overlap_predicted_neg_i)
+            # logger.debug(len(overlap_predicted_pos_i))
             folds[i]['vot_pred_pos'] = list(overlap_predicted_pos_i)
+            folds[i]['vot_pred_neg'] = list(overlap_predicted_neg_i)
         return results
 
 
