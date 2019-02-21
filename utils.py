@@ -4,6 +4,8 @@ import psutil
 import threading
 import os
 import time
+import errno
+import stat
 
 ISO_TIME_FORMAT = '%m%d-%H-%M-%S'
 
@@ -158,3 +160,23 @@ def kill_by_name(name):
 
 def current_time():
     return time.strftime(ISO_TIME_FORMAT, time.localtime())
+
+
+def file_name_no_ext(path: str) -> str:
+    return os.path.splitext(path)[0]
+
+
+def handle_remove_readonly(func, path, exc):
+    """
+    https://stackoverflow.com/questions/1213706/what-user-do-python-scripts-run-as-in-windows
+    :param func:
+    :param path:
+    :param exc:
+    :return:
+    """
+    excvalue = exc[1]
+    if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+        os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
+        func(path)
+    else:
+        raise RuntimeError

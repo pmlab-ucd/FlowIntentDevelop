@@ -3,7 +3,6 @@
 import os
 from bs4 import BeautifulSoup
 from xml.dom.minidom import parseString
-import hashlib
 import json
 from learner import Learner
 from utils import set_logger
@@ -51,7 +50,7 @@ class Context:
                           sort_keys=True, indent=4, ensure_ascii=False)
 
 
-def find_html(data_dir: str) -> object:
+def find_html(data_dir: str) -> str:
     for filename in os.listdir(data_dir):
         if filename.endswith('.html'):
             return os.path.join(data_dir, filename)
@@ -78,8 +77,7 @@ def hierarchy_xml(xml_path):
                         all_views.append(node)
                 logger.debug(doc)
         except Exception as e:
-            logger.warning(e)
-            logger.warning(xml_path)
+            logger.warning('Errors in processing %s: %s', xml_path, str(e))
     else:
         logger.warning('XML %s does not exist!', xml_path)
     return all_views, doc
@@ -88,7 +86,7 @@ def hierarchy_xml(xml_path):
 def contexts(app_cxt_rdir):
     """
     Extract app contexts from the given dir.
-    :type app_cxt_rdir: The root directory that stores the app contexts.
+    :type app_cxt_rdir: The dest_dir directory that stores the app contexts.
     """
     label = os.path.basename(app_cxt_rdir)
     collection = []
@@ -129,13 +127,14 @@ def description(html):
             else:
                 unseen.append(word)
                 for topic in Context.word_topics.keys():
-                    if word in Context.word_topics[topic]:
-                        logger.debug(word)
-                        if topic not in topic_word_counter.keys():
-                            topic_word_counter[topic] = 1
-                        else:
-                            topic_word_counter[topic] += 1
-                        break
+                    if word not in Context.word_topics[topic]:
+                        continue
+                    logger.debug(word)
+                    if topic not in topic_word_counter.keys():
+                        topic_word_counter[topic] = 1
+                    else:
+                        topic_word_counter[topic] += 1
+                    break
         if len(topic_word_counter) == 0:
             return [category, app_name]
         for topic in sorted(topic_word_counter, key=topic_word_counter.get, reverse=True):

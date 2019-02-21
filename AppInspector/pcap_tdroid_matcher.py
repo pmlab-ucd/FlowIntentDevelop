@@ -57,7 +57,7 @@ def match_pcap_ip_url(rule, real):
         if data in url:
             return True
         else:
-            logger.debug('Not matched: ' + ip + ', ' + data + ', ' + url)
+            logger.debug('Not matched: %s, %s, %s', ip, data, url)
             return False
     return False
 
@@ -92,7 +92,7 @@ def parse_taint_json_log(log_file, pkg, taint_type=None):
                         continue
                     res.append(taint)
     except Exception as e:
-        logger.warn(str(e))
+        logger.warning(str(e))
     return res
 
 
@@ -123,8 +123,8 @@ def parse_taint_old_log(log_file, pkg, taint_type=None):
                 taint['channel'] = 'HTTP'
                 taints.append(taint)
     except UnicodeDecodeError as e:
-        logger.warn('Error in decoding ' + log_file)
-        logger.warn(e)
+        logger.warning('Error in decoding ' + log_file)
+        logger.warning(e)
     return taints
 
 
@@ -139,7 +139,7 @@ def http_taints(taints):
             elif 'data' in taint['message']:
                 data = taint['message'].split('data')[1]
             else:
-                logger.warn('Cannot extract content from the taint message!')
+                logger.warning('Cannot extract content from the taint message!')
                 continue
             data = data.split('HTTP')[0]
             data = data.replace('[', '').replace(']', '')
@@ -181,7 +181,7 @@ def clean_folder(work_dir: str) -> None:
                    'com.google.android.gsf.login', 'android.widget.LinearLayout']
     for root, dirs, files in os.walk(work_dir, topdown=False):
         for fn in files:
-            if str(fn).endswith('xml'):
+            if fn.endswith('xml'):
                 # Clean the hierarchy xml (and other relevant data) whose content does not contain any app UI.
                 xml_path = os.path.join(root, fn)
                 try:
@@ -202,7 +202,7 @@ def clean_folder(work_dir: str) -> None:
                         if android and len(others) == 0:
                             rm_instance_meta(root, fn)
                 except Exception as e:
-                    logger.warn('Error while handling ' + xml_path + ", " + str(e))
+                    logger.warn('Error while handling %s, %s', xml_path, str(e))
 
 
 def rm_instance_meta(root, fn):
@@ -219,7 +219,7 @@ def rm_instance_meta(root, fn):
             os.remove(os.path.join(root, filename + '.xml'))
     os.remove(os.path.join(root, filename + '_sens_http_flows'))
     os.remove(os.path.join(root, filename + '.pcap'))
-    logger.info('Delete ' + filename)
+    logger.info('Delete %s', filename)
 
 
 def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
@@ -246,8 +246,8 @@ def organize_dir_by_taint(src_dir, to_dir, taint='Location', sub_dataset=True):
                     if sub_dataset:
                         dataset_name = os.path.basename(os.path.abspath(os.path.join(root, os.pardir)))
                         dest_dir = os.path.join(to_dir, dataset_name)
-                    logger.debug('root: ' + root)
-                    logger.debug('dirname:' + dirname)
+                    logger.debug('dest_dir: %s', root)
+                    logger.debug('dirname: %s', dirname)
                     dest_dir = os.path.join(dest_dir, dirname)
                     if os.path.exists(dest_dir):
                         rmtree(dest_dir)
@@ -271,7 +271,7 @@ def extract_flow_pcap(sub_dir, target_taints=None):
         flows2jsons(sub_dir, flows, filter_funcs=filter_funcs, args=args, fn_filter='filter')
         logger.debug(str(len(flows)) + ' ' + str(flows))
         if len(flows) == 0:
-            logger.warn(sub_dir + ' does not contain any interested taint!')
+            logger.warn('%s does not contain any interested taint!', sub_dir)
     return flows
 
 
@@ -283,7 +283,7 @@ def parse_logs(sub_dir, taint=None):
     :return:
     """
     pkg = apk_name(sub_dir)
-    logger.info(pkg + ", " + sub_dir)
+    logger.info("%s, %s", pkg, sub_dir)
     taints = []
     for root, dirs, files in os.walk(sub_dir, topdown=False):
         for filename in files:

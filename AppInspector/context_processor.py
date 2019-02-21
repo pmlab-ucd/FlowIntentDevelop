@@ -5,14 +5,14 @@ from learner import Learner
 import learner
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from utils import set_logger
+from utils import set_logger, file_name_no_ext, handle_remove_readonly
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression
-import sys
 import shutil
 import pandas as pd
 import logging
 from multiprocessing import Manager, Pool
+from argparse import ArgumentParser
 
 logger = set_logger('ContextProcessor')
 
@@ -21,6 +21,36 @@ class ContextProcessor:
     """
     Gather the labelled app contexts and build the ML models.
     """
+
+    @staticmethod
+    def preprocess(dir_path: str) -> None:
+        """
+        If the sens_http_flows.json/xml does not have the corresponding png, del it.
+        :param dir_path:
+        """
+
+        def del_file(ext: str):
+            path = os.path.join(root, base_name + ext)
+            if os.path.exists(path):
+                os.remove(path)
+                logger.info('rm %s', path)
+
+        for root, dirs, files in os.walk(dir_path):
+            for d in dirs:
+                d = os.path.join(root, d)
+                if not any(fname.endswith('.png') for fname in os.listdir(d)):
+                    logger.info('rm %s', d)
+                    shutil.rmtree(d, ignore_errors=False, onerror=handle_remove_readonly)
+            for file_name in files:
+                if not file_name.endswith('.xml'):
+                    continue
+                base_name = file_name_no_ext(os.path.join(root, file_name))
+                if os.path.exists(os.path.join(root, base_name + '.png')):
+                    continue
+                del_file('.xml')
+                del_file('.json')
+                del_file('.pcap')
+                del_file('_sens_http_flows.json')
 
     @staticmethod
     def docs(instances: [Context]) -> [[], []]:
@@ -67,7 +97,7 @@ class ContextProcessor:
         :param sub_dir_name:
         """
         # Load the contexts stored in the hard disk.
-        # instances_dir_name = hashlib.md5(root.encode('utf-8')).hexdigest()
+        # instances_dir_name = hashlib.md5(dest_dir.encode('utf-8')).hexdigest()
         # Output dir
         contexts_dir = os.path.join('data', sub_dir_name)
         pos_dir = os.path.join(root_dir, pos_dir_name)
@@ -167,12 +197,21 @@ class ContextProcessor:
 
 
 if __name__ == '__main__':
-    root = sys.argv[len(sys.argv) - 1]
-    reset = False
-    if len(sys.argv) > 1:
-        reset = True if '-r' in sys.argv else reset
+    parser = ArgumentParser()
+    parser.add_argument("-p", "--preprocess", dest="preprocess", action='store_true',
+                        help="whether preprocess the dest folder")
+    parser.add_argument("-d", "--dir", dest="dir",
+                        help="the dest folder")
+    parser.add_argument("-r", "--reset", dest="reset", action='store_true',
+                        help="whether clear the dest folder")
+    args = parser.parse_args()
+    dest_dir = args.dir
+    if args.preprocess:
+        ContextProcessor.preprocess(dest_dir)
+        exit()
     logger.setLevel(logging.DEBUG)
-    logger.info('The data stored at: %s', root)
+    logger.info('The data stored at: %s', dest_dir)
     learner.logger.setLevel(logging.INFO)
-    samples, samples_dir = ContextProcessor.process(root, reset_out_dir=reset, sub_dir_name=str(os.path.basename(root)))
+    samples, samples_dir = ContextProcessor.process(dest_dir, reset_out_dir=args.reset,
+                                                    sub_dir_name=str(os.path.basename(dest_dir)))
     ContextProcessor.train(samples, samples_dir)
