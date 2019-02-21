@@ -137,6 +137,7 @@ class ContextProcessor:
 
     @staticmethod
     def train(instances, contexts_dir):
+        logger.info('The number of instances: %d', len(instances))
         # Convert the text_fea into the <String, label> pairs.
         docs, y = ContextProcessor.docs(instances)
         # Transform the strings into the np array.

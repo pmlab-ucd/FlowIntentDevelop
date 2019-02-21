@@ -163,7 +163,7 @@ def current_time():
 
 
 def file_name_no_ext(path: str) -> str:
-    return os.path.splitext(path)[0]
+    return os.path.basename(os.path.splitext(path)[0])
 
 
 def handle_remove_readonly(func, path, exc):

@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from xml.dom.minidom import parseString
 import json
 from learner import Learner
-from utils import set_logger
+from utils import set_logger, file_name_no_ext
 
 logger = set_logger('Context')
 
@@ -19,31 +19,27 @@ class Context:
                    'topic_weather': [u'天气', u'预报', u'温度', u'湿度', 'PM2\\.5'],
                    'topic_map': [u'旅行', u'地图', u'地理', u'GPS', u'导航', u'旅游']}
 
-    def __init__(self, data_dir, label):
+    def __init__(self, data_dir, label, xml, ui_doc=None):
         logger.debug(data_dir)
         self.dir = data_dir
-        self.id = os.path.basename(data_dir)
+        self.id = os.path.basename(data_dir) + '_' + file_name_no_ext(xml)
         self.label = label
         # Collect the topic and the app name from the html
         self.html = find_html(data_dir)
         self.topic = ''
         self.app_name = ''
         # self.views = []
-        self.ui_doc = ''
-        self.xml = ''
+        self.xml = xml
         if self.html:
             self.topic, self.app_name = description(self.html)
             logger.debug('%s, %s', self.topic, self.app_name)
         # Parse user interfaces
-        xmls = find_xmls(data_dir)
-        length = 0
-        for xml in xmls:
-            views, doc = hierarchy_xml(xml)
-            if len(views) >= length:
-                self.xml = xml
-                # self.views = views
-                self.ui_doc = doc
-                length = len(views)
+        if ui_doc is None:
+            views, self.ui_doc = hierarchy_xml(xml)
+        elif ui_doc is not None:
+            self.ui_doc = ui_doc
+        else:
+            self.ui_doc = ''
 
     def json(self):
         return json.dumps(self, default=lambda o: o.__dict__,
@@ -94,8 +90,29 @@ def contexts(app_cxt_rdir):
         logger.info(app_cxt_rdir)
         for dir_name in dirs:
             logger.info('processing %s', dir_name)
-            if len(find_xmls(os.path.join(root, dir_name))) > 0:
-                collection.append(Context(os.path.join(root, dir_name), label))
+            xmls = find_xmls(os.path.join(root, dir_name))
+            # To handle old data generated in SECON.
+            hier_word = False
+            for xml in xmls:
+                if 'hier' in xml:
+                    hier_word = True
+                break
+            if hier_word:
+                length = 0
+                final_xml = ''
+                ui_doc = ''
+                for xml in xmls:
+                    views, doc = hierarchy_xml(xml)
+                    if len(views) >= length:
+                        final_xml = xml
+                        # self.views = views
+                        ui_doc = doc
+                        length = len(views)
+                collection.append(Context(os.path.join(root, dir_name), label, xml=final_xml, ui_doc=ui_doc))
+                continue
+            # To handle new data.
+            for xml in xmls:
+                collection.append(Context(os.path.join(root, dir_name), label, xml=xml))
     return collection
 
 
