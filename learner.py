@@ -224,6 +224,10 @@ class Learner:
     @staticmethod
     def class_report(conf_mat):
         tp, fp, fn, tn = conf_mat.flatten()
+        return Learner.measure(tp, fp, tn, fn)
+
+    @staticmethod
+    def measure(tp, fp, tn, fn):
         measures = {'accuracy': (tp + tn) / (tp + fp + fn + tn), 'fp_rate': fp / (tn + fp), 'recall': tp / (tp + fn),
                     'precision': tp / (tp + fp), 'f1score': 2 * tp / (2 * tp + fp + fn)}
         # measures['tn_rate'] = tn / (tn + fp)  # (true negative rate)
@@ -637,7 +641,9 @@ class Learner:
                     res = res.intersection(s)
             return res
 
+        tp_v = []
         fp_v = []
+        tn_v = []
         fn_v = []
         overlap_pred_ind = set()
         for fold_id in folds:
@@ -651,13 +657,21 @@ class Learner:
             for neg in overlap_predicted_neg_i:
                 if y[neg] == 1:
                     fn_v.append(neg)
+                else:
+                    tn_v.append(neg)
             for pos in overlap_predicted_pos_i:
                 if y[pos] == 0:
                     fp_v.append(pos)
+                else:
+                    tp_v.append(pos)
         results['voting'] = {}
+        results['voting']['tp'] = tp_v
         results['voting']['fp'] = fp_v
+        results['voting']['tn'] = tn_v
         results['voting']['fn'] = fn_v
         results['voting']['all'] = overlap_pred_ind
+        results['voting']['conf_mat'] = Learner.measure(len(tp_v), len(fp_v), len(tn_v), len(fn_v))
+        logger.info('voting conf_mat: %s', str(results['voting']['conf_mat']))
         return results
 
 

@@ -202,6 +202,7 @@ class ContextProcessor:
             logger.info('The total number of overlapping instances after voting: %d', len(res['voting']['all']))
             logger.info('The number of fp: %d', len(res['voting']['fp']))
             logger.info('The number of fn: %d', len(res['voting']['fn']))
+            logger.info('conf_mat: %s', str(res['voting']['conf_mat']))
         #   json.dump(res, json_file)
         # with open(os.path.join(contexts_dir, 'voting_predicted_pos.json'), 'w') as json_file:
         # json.dump(predicted_pos_instances, json_file)
