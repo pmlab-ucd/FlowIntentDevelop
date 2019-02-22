@@ -53,8 +53,8 @@ class Analyzer:
             pred_pos = []
             with open(os.path.join(pred_contexts_path, 'folds.json'), 'r', errors='ignore') as json_file:
                 folds = json.load(json_file)
-                for fold in folds:
-                    pred_pos.extend([contexts[context] for context in fold['vot_pred_pos']])
+                for fold_id in folds:
+                    pred_pos.extend([contexts[context] for context in folds[fold_id]['vot_pred_pos']])
                 logger.debug(pred_pos)
             return pred_pos
 
@@ -77,14 +77,15 @@ class Analyzer:
                     with open(os.path.join(root, file), 'r', encoding="utf8", errors='ignore') as infile:
                         flows = json.load(infile)
                         for flow in flows:
-                            if filtered_urls is not None:
-                                ignore = False
-                                for url in filtered_urls:
-                                    if url in flow['url']:
-                                        ignore = True
-                                        break
-                                if ignore:
-                                    continue
+                            if filtered_urls is None:
+                                continue
+                            ignore = False
+                            for url in filtered_urls:
+                                if url in flow['url']:
+                                    ignore = True
+                                    break
+                            if ignore:
+                                continue
                             # The ground truth label, which is defined by "context" label.
                             flow['real_label'] = context['label']
                             jsons.append(flow)
@@ -198,7 +199,8 @@ class Analyzer:
         res['true_recall'] = []
         scores = res['scores']
         true_scores = res['true_scores']
-        for fold in folds:
+        for fold_id in folds:
+            fold = folds[fold_id]
             result = dict()
             train_index = fold['train_index']
             test_index = fold['test_index']
@@ -273,7 +275,8 @@ class Analyzer:
             # ("Local Outlier Factor", LocalOutlierFactor(
             # n_neighbors=35, contamination=outliers_fraction))
         ]
-        for fold in folds:
+        for fold_id in folds:
+            fold = folds[fold_id]
             for name, algorithm in anomaly_algorithms:
                 logger.info('--------------------%s-------------------', name)
                 result = dict()

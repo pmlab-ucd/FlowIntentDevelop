@@ -178,7 +178,8 @@ class ContextProcessor:
         for clf in clfs:
             clf_name = type(clf).__name__
             logger.debug('CLF: %s', clf_name)
-            for fold in res[clf_name]:
+            for fold_id in res[clf_name]['folds']:
+                fold = res[clf_name]['folds'][fold_id]
                 if 'fp_item' not in fold:
                     continue
                 for fp in fold['fp_item']:
@@ -188,7 +189,8 @@ class ContextProcessor:
                     logger.debug('FN: %s, %s, %s', str(instances[fn].ui_doc), instances[fn].topic,
                                  instances[fn].app_name)
         with open(os.path.join(contexts_dir, 'folds.json'), 'w') as json_file:
-            for fold in folds:
+            for fold_id in folds:
+                fold = folds[fold_id]
                 fold['train_index'] = fold['train_index'].tolist()
                 fold['test_index'] = fold['test_index'].tolist()
             # pd.Series(folds).to_json(json_file, orient='values')
@@ -197,6 +199,9 @@ class ContextProcessor:
 
         with open(os.path.join(contexts_dir, 'voting_res.json'), 'w') as json_file:
             pd.Series(res).to_json(json_file, orient='split')
+            logger.info('The total number of overlapping instances after voting: %d', len(res['voting']['all']))
+            logger.info('The number of fp: %d', len(res['voting']['fp']))
+            logger.info('The number of fn: %d', len(res['voting']['fn']))
         #   json.dump(res, json_file)
         # with open(os.path.join(contexts_dir, 'voting_predicted_pos.json'), 'w') as json_file:
         # json.dump(predicted_pos_instances, json_file)

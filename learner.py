@@ -245,16 +245,14 @@ class Learner:
         # cv = KFold(n_splits=5, shuffle=True)
         # I generate a KFold in order to make cross validation
         kf = StratifiedKFold(n_splits=fold, shuffle=shuffle, random_state=42)
-        folds = []
+        folds = {}
         for fold_index, (train_index, test_index) in enumerate(kf.split(X, y)):
             fold = dict()
             fold['train_index'] = train_index
             fold['test_index'] = test_index
             # fold['X_train'], fold['X_test'] = X[train_index], X[test_index]
             # fold['y_train'], fold['y_test'] = y[train_index], y[test_index]
-            fold['i'] = fold_index
-
-            folds.append(fold)
+            folds[fold_index] = fold
         return folds
 
     @staticmethod
@@ -266,8 +264,9 @@ class Learner:
 
         # I start the cross validation
         results['fold'] = []
-        for fold in folds:
+        for fold_id in folds:
             result = dict()
+            fold = folds[fold_id]
             train_index = fold['train_index']
             test_index = fold['test_index']
             X_train, X_test = X[train_index], X[test_index]
@@ -365,16 +364,15 @@ class Learner:
             results = Learner.cross_validation(clf, train_data, labels, folds=folds)
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
-            logger.info('Logistic: ' + str(results['duration']))
-            logger.info('mean scores:' + str(results['mean_scores']))
-            logger.info('mean_conf:' + str(results['mean_conf_mat']))
+            logger.info('Logistic: %s', str(results['duration']))
+            logger.info('mean scores: %s', str(results['mean_scores']))
+            logger.info('mean_conf:%s ', str(results['mean_conf_mat']))
 
         # Fit the forest to the training set, using the bag of words as
         # features and the sentiment labels as the response variable
         #
         # This may take a few minutes to run
         clf = clf.fit(train_data, labels)
-
         return clf, results
 
     @staticmethod
@@ -525,7 +523,6 @@ class Learner:
             # words = [w for w in words if not w in stopwords.words("english")]
             logger.debug(words)
 
-        # print('/'.join(words)) #  do not use print if you want to return
         word_list = []
         for word in words:
             word_list.append(word)
@@ -537,7 +534,7 @@ class Learner:
         return [min(x), max(x), mean(x), median(x), s_dev(x), skewness(x), kurtosis(x)]
 
     @staticmethod
-    def voting(clfs, X, y, folds):
+    def voting(clfs, X, y, folds: {}):
         """
         Let each classifier train on the n-1 folds and predict on the rest fold.
         Then for each fold, pick the text_fea where all clfs say pos/neg.
@@ -555,10 +552,12 @@ class Learner:
         # Start the cross validation
         for clf in clfs:
             clf_name = type(clf).__name__
-            results[clf_name] = []
+            results[clf_name] = {}
+            results[clf_name]['folds'] = {}
             logger.debug('clf: %s', clf_name)
-            for fold in folds:
+            for fold_id in folds:
                 result = dict()
+                fold = folds[fold_id]
                 train_index = fold['train_index']
                 test_index = fold['test_index']
                 X_train, X_test = X[train_index], X[test_index]
@@ -600,7 +599,7 @@ class Learner:
                     fn_i = np.where((y_plabs == 0) & (y_test == 1))[0]
                     result['fp_item'] = test_index[fp_i]
                     result['fn_item'] = test_index[fn_i]
-                results[clf_name].append(result)
+                results[clf_name]['folds'][fold_id] = result
                 logger.debug('fold: ')
                 fps = result['fp_item']
                 logger.debug("FP: %s", str(fps))
@@ -610,49 +609,55 @@ class Learner:
             # simplejson.dump(results.tolist(), codecs.open(output_dir + '/cv.json', 'w', encoding='utf-8'),
             # separators=(',', ':'), sort_keys=True, indent=4)
             duration = time() - t0
-            results['duration'] = duration
+            results[clf_name]['duration'] = duration
             # results['cv_res'] = cv_res
             # results['cv_res_mean'] = sum(cv_res) / n_splits
 
             # print "\nMean score: %0.2f (+/- %0.2f)" % (np.mean(scores), np.std(scores) * 2)
-            results['mean_scores'] = np.mean(scores)
-            results['std_scores'] = np.std(scores)
+            results[clf_name]['mean_scores'] = np.mean(scores)
+            results[clf_name]['std_scores'] = np.std(scores)
             conf_mat /= len(folds)
             logger.info("Mean CM: %s \n", str(conf_mat))
 
             logger.info("\nMean classification measures: \n")
-            results['mean_conf_mat'] = Learner.class_report(conf_mat)
+            results[clf_name]['mean_conf_mat'] = Learner.class_report(conf_mat)
             # return scores, conf_mat, {'fp': sorted(false_pos), 'fn': sorted(false_neg)}
-            logger.info('duration of %s: %0.2f', str(clf), results['duration'])
-            logger.info('mean scores: %0.2f', results['mean_scores'])
-            logger.info('mean_conf: %s', str(results['mean_conf_mat']))
+            logger.info('duration of %s: %0.2f', str(clf), results[clf_name]['duration'])
+            logger.info('mean scores: %0.2f', results[clf_name]['mean_scores'])
+            logger.info('mean_conf: %s', str(results[clf_name]['mean_conf_mat']))
 
-        def overlap_pred(overlap_predicted: set, label='1'):
+        def overlap_pred(fold_id, label):
+            res = set()
             for j in range(0, len(clfs)):
                 c_name = type(clfs[j]).__name__
-                items = results[c_name][i]['predicted_' + label]
-                logger.debug("num: %d", len(items))
+                s = set(results[c_name]['folds'][fold_id]['predicted_' + label])
                 if j == 0:
-                    for item in items:
-                        overlap_predicted.add(int(item))
+                    res = s
                 else:
-                    tmp = set()
-                    for item in items:
-                        tmp.add(int(item))
-                    another_tmp = set()
-                    for item in overlap_predicted:
-                        if item in tmp:
-                            another_tmp.add(item)
-                    overlap_predicted = another_tmp
+                    res = res.intersection(s)
+            return res
 
-        for i in range(0, len(folds)):
-            overlap_predicted_pos_i = set()
-            overlap_predicted_neg_i = set()
-            overlap_pred(overlap_predicted_pos_i)
-            overlap_pred(overlap_predicted_neg_i)
+        fp_v = []
+        fn_v = []
+        overlap_pred_ind = set()
+        for fold_id in folds:
+            overlap_predicted_pos_i = overlap_pred(fold_id, '1')
+            overlap_predicted_neg_i = overlap_pred(fold_id, '0')
+            overlap_pred_ind = overlap_pred_ind.union(overlap_predicted_neg_i)
+            overlap_pred_ind = overlap_pred_ind.union(overlap_predicted_pos_i)
             # logger.debug(len(overlap_predicted_pos_i))
-            folds[i]['vot_pred_pos'] = list(overlap_predicted_pos_i)
-            folds[i]['vot_pred_neg'] = list(overlap_predicted_neg_i)
+            folds[fold_id]['vot_pred_pos'] = [int(i) for i in overlap_predicted_pos_i]
+            folds[fold_id]['vot_pred_neg'] = [int(i) for i in overlap_predicted_neg_i]
+            for neg in overlap_predicted_neg_i:
+                if y[neg] == 1:
+                    fn_v.append(neg)
+            for pos in overlap_predicted_pos_i:
+                if y[pos] == 0:
+                    fp_v.append(pos)
+        results['voting'] = {}
+        results['voting']['fp'] = fp_v
+        results['voting']['fn'] = fn_v
+        results['voting']['all'] = overlap_pred_ind
         return results
 
 
