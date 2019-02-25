@@ -149,27 +149,6 @@ class ContextProcessor:
         logger.info('pos: %d', len(np.where(y == 1)[0]))
         # Split the data set into 10 folds.
         folds = Learner.n_folds(train_data, y, fold=10)  # [Fold(f) for f in Learner.n_folds(train_data, y, fold=10)]
-        """
-        # Perform the init classification and check the misclassified text_fea
-        clf = DecisionTreeClassifier(class_weight='balanced')
-        res = Learner.cross_validation(clf, folds)
-        for fold in res['fold']:
-            for item in fold['fp_item']:
-                instance = text_fea[item]
-                ContextProcessor.log.info("FP:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
-            for item in fold['fn_item']:
-                instance = text_fea[item]
-                ContextProcessor.log.info("FN:" + str(item) + str(instance.ui_doc) + "," + str(instance.dir))
-        
-        clf = MultinomialNB()
-        Learner.cross_validation(clf, folds)
-        clf = RandomForestClassifier(class_weight='balanced')
-        Learner.cross_validation(clf, folds)
-        clf = svm.SVC(kernel='linear', class_weight='balanced', probability=True)
-        Learner.cross_validation(clf, folds)
-        clf = LogisticRegression(class_weight='balanced')
-        Learner.cross_validation(clf, folds)
-        """
         # Wrap a bunch of classifiers and let them vote on every fold.
         clfs = [svm.SVC(kernel='linear', class_weight='balanced', probability=True),
                 RandomForestClassifier(class_weight='balanced'),

@@ -25,6 +25,8 @@ class Analyzer:
     # Indirect leakage: first leverage legal map sdk to get position description (such as city name),
     # then transfer the description out.
     map_sdk_urls = ['map.baidu.com', 'amap.com', 'maps.googleapis.com']
+    numeric_features = ['frame_num', 'up_count', 'non_http_num', 'len_stat', 'epoch_stat',
+                       'up_stat', 'down_stat']
 
     @staticmethod
     def filter_url_words(url: str):
@@ -108,8 +110,7 @@ class Analyzer:
             if real_label != label:
                 logger.info("Flow's real label does not match the training label for %s, real_label = %d label = %d",
                             flow['url'], real_label, label)
-            numeric = [flow['frame_num'], flow['up_count'], flow['non_http_num'], flow['len_stat'], flow['epoch_stat'],
-                       flow['up_stat'], flow['down_stat']]
+            numeric = [flow[name] for name in Analyzer.numeric_features]
             docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb))
         return docs
 
@@ -434,6 +435,7 @@ if __name__ == '__main__':
             X = X.toarray()
             X = np.hstack([X, numeric_fea])
     else:
+        feature_names = Analyzer.numeric_features
         X = np.hstack([numeric_fea])
     logger.info('--------------------Logistic Regression-------------------')
     if penalty is None or penalty == '':
@@ -443,6 +445,10 @@ if __name__ == '__main__':
     Analyzer.cross_validation(X, y, true_labels, clf)
     if args.save_dir_path != '':
         clf.fit(X, y)
+        if not args.numeric and not args.all_feature:
+            top_n = -100
+            top_n = np.argpartition(clf.coef_[0], top_n)[top_n:]
+            logger.info(np.array(feature_names)[top_n])
         os.makedirs(args.save_dir_path, exist_ok=True)
         model_path = os.path.join(args.save_dir_path, args.fname + '.model')
         with open(model_path, 'wb') as fid:
