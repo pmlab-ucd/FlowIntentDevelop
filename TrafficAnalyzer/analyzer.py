@@ -103,8 +103,12 @@ class Analyzer:
         :return:
         """
         docs = []
+        taint_counts = 0
         for flow in jsons:
             line = Analyzer.filter_url_words(flow['url'])
+            if '_' in flow['taint']:
+                taint_counts += 1
+            # line = line + ' ' + 'r_' + flow['taint']
             label = 1 if flow['label'] == '1' else 0
             real_label = 1 if flow['real_label'] == '1' else 0
             if real_label != label:
@@ -112,6 +116,7 @@ class Analyzer:
                             flow['url'], real_label, label)
             numeric = [flow[name] for name in Analyzer.numeric_features]
             docs.append(Learner.LabelledDocs(line, label, numeric, real_label, char_wb=char_wb))
+        logger.info('The number of flows who have more than 1 taints: %d', taint_counts)
         return docs
 
     @staticmethod

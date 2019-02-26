@@ -53,10 +53,11 @@ class ContextProcessor:
                 del_file('_sens_http_flows.json')
 
     @staticmethod
-    def docs(instances: [Context]) -> [[], []]:
+    def docs(instances: [Context], additional_doc: [str]=None) -> [[], []]:
         """
         Convert SharingInstances into the <string, label> pairs.
         :param instances:
+        :param additional_doc
         :return:
         """
         docs = []
@@ -66,9 +67,11 @@ class ContextProcessor:
             for string in instance.ui_doc:
                 doc.append(' '.join(Learner.str2words(str(string))))
             if instance.topic is not '':
-                doc.append(instance.topic + '_t')  # use another feature space
+                doc.append('t_' + instance.topic)  # use another feature space
             if instance.app_name is not '':
-                doc.append(' '.join([i + '_n' for i in Learner.str2words(instance.app_name)]))
+                doc.append(' '.join(['n_' + i for i in Learner.str2words(instance.app_name)]))
+            for d in additional_doc:
+                doc.append(d)
             docs.append(' '.join(doc))
             labels.append(int(instance.label))
         return docs, np.array(labels)
@@ -139,10 +142,10 @@ class ContextProcessor:
         return [Object(ins) for ins in instances], contexts_dir
 
     @staticmethod
-    def train(instances, contexts_dir):
+    def train(instances, contexts_dir, resource='Location'):
         logger.info('The number of instances: %d', len(instances))
         # Convert the text_fea into the <String, label> pairs.
-        docs, y = ContextProcessor.docs(instances)
+        docs, y = ContextProcessor.docs(instances, ['r_' + resource])
         # Transform the strings into the np array.
         train_data, voc, vec = Learner.LabelledDocs.vectorize(docs)
         logger.info('neg: %d', len(np.where(y == 0)[0]))
